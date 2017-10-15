@@ -1,0 +1,320 @@
+html{
+    height: 100%;
+}
+body{
+    display: block;
+    height: 81%;
+}
+.BodyHeader{
+    background-color: #353744;
+    height: 100px;    
+}
+header img {
+    height: 71px;
+    width: 63px;
+    padding-left: 15px;
+    padding-top: 14px;
+    float: left;
+}
+.BodyHeader-headerH1{
+    font-size: 27px;
+    color: #FFF;
+    font-family: "Comfortaa" , cursive;
+    padding-top: 24px;
+    float: none;
+    display: flex;
+    font-weight: normal;
+    margin-bottom: 0;
+}
+.BodyHeader-headerH1.small{
+    font-size: 14px;
+    padding-left: 5px;
+    padding-top: 0;
+    margin-bottom: 0;
+    margin-top: 0;
+}
+.AllArea{
+    display: flex;
+    height: 100%;
+    z-index: 1;
+    -webkit-user-select: all;
+}
+nav{
+    display: block;
+    background-color: #61d290;
+    width: 230px;
+    height: 100%;
+}
+.MainArea{
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: #F6F6F6;
+}
+.Subject{
+    display: block;
+    background-color: inherit;
+    padding-left: 28px;
+    padding-top: 21px;
+    padding-bottom: 20px;
+    padding-right: 42px;
+}
+.Subject h2{
+    font-family: "Nunito";
+    font-size: 21px;
+    color: #414141;
+    float: left;
+    margin: 0px;
+}
+.Subject dl dt img{
+    width: 27px;
+    height: 24px;
+}
+.Subject dl{
+    margin: 0;
+}
+.Subject dl dd{
+    margin: 0;
+    margin-top: 3px;
+    display: inline;
+    font-size: 15px;
+}
+.Rtl{
+    float: right;
+    font-size: 17px;
+    font-family: "Nunito";
+    font-weight: 600;
+    color: #414141;
+    padding-top: 3px;
+    display: flex;
+}
+.Main{
+    display: block;
+    height: 425px;
+    background-color: inherit;
+}
+ol{
+    list-style: none;
+    margin-left: 23px;
+    margin-right: 10px;
+    margin-top: 16px;
+    padding: 0px;
+    font-family: "Nunito";
+    /*Scroll*/
+    overflow:hidden; 
+    overflow-y:scroll;
+    height: inherit;
+}
+ol::-webkit-scrollbar
+{
+    width: 10px;
+    border-radius: 5px;
+    background-color: #ebedeb;
+    border: 1px solid #d7d7d7;
+}
+ol::-webkit-scrollbar-thumb
+{
+    width: 10px;
+    border-radius: 5px;
+    background-color: #FFF;
+    border: 1px solid #d7d7d7;
+}
+ol li img{
+    height: 37px;
+    width: 37px;
+    border-radius: 100%;
+    /*margin-bottom: 8px;*/
+}
+ol li div{
+    margin-bottom: 13px;
+    display: flex;
+}
+ol li article{
+    margin-left: 8px;
+    display: inline-block;
+    background-color: #FFF;
+    border-radius: 9px;
+    border: 1px solid #d7d7d7;
+    padding: 4px;
+}
+ol li div article button{
+    float: right;
+    background-color: transparent;
+    border: 0;
+    background-image: url("./../images/x.png");
+    height: 19px;
+    width: 19px;
+    visibility: hidden;
+}
+
+ol li div article:hover{
+    background-color: #ebedeb;
+    border: 1px solid #d7d7d7;
+}
+ol li div article:hover button{
+    visibility: visible;
+}
+cite{
+    font-weight: bold;
+    font-size: 15px;
+    color: rgb(32,39,41);
+    font-style: normal;
+}
+time{
+    font-size: 12px;
+    color: rgb(153,153,153);
+}
+.MessageParagraph{
+    margin: 0;
+    display: block;
+    font-size: 15px;
+    color: rgb(97,97,97);
+    max-width: 600px;
+}
+.SendMsg{
+    border: 1px solid #d7d7d7;
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    padding-top: 20px;
+    padding-left: 20px;
+    padding-bottom: 25px;
+    padding-right: 40px;
+    background-color: #FFF;
+    width: inherit;
+}
+.TextSection{
+    margin: 0;
+    padding: 0;
+    font-size: 15px;
+    color: rgb(97,97,97);
+    font-family: "Nunito";
+    width: 875px;
+    height: 50px;
+    resize: none;
+    border: 0;
+}
+.SendButton{
+    background-color: transparent;
+    border: 0;
+    background-image: url('./../images/send.png');
+    background-repeat: no-repeat;
+    background-size: 52px 52px;
+    border-radius: 100%;
+    height: 52px;
+    width: 52px;
+    margin-left: 50px;
+}
+
+.LogIn{
+    z-index: 2;
+    display: block;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    bottom: 50%;
+    right: 50%;
+    transform: translate(-50%, -50%);
+    width: 440px;
+    height: 220px;
+    border-radius: 1px;
+    background-color: #f9f9f9;
+    border: 1px solid #d7d7d7;
+}
+
+.LogIn-header{
+    margin: 0;
+    padding: 0;
+    padding-top: 30px;
+    padding-left: 25px;
+    font-size: 23px;
+    color: rgb(41,41,41);
+    font-family: "Nunito";
+}
+.LogIn-form{
+    margin: 0;
+    padding: 0;
+    padding-top: 10px;
+    padding-left: 25px;
+    padding-right: 30px;
+    font-size: 15px;
+    color: rgb(97,97,97);
+    font-family: "Nunito";
+}
+.LogIn-textBox{
+    float: right;
+    width: 312px;
+    height: 29px;
+    border-radius: 9px;
+    background-color: #ffffff;
+    border: 1px solid #d7d7d7;
+    margin-bottom: 10px;
+}
+
+LogIn-submitBox{
+    font-family: "Nunito";
+    height: 24px;
+    font-size: 15px;
+    text-align: center;
+}
+
+.LogIn-submitBox.save{
+    float: right;
+    margin-left: 10px;
+    width: 82px;
+    border-radius: 1px;
+    background-image: linear-gradient(0deg, #47a171 0%, #7dd74d 100%);
+    color:  #fff;
+    text-align: center;
+}
+
+.LogIn-submitBox.anonymous{
+    float: right;
+    width: 132px;
+    border-radius: 1px;
+    background-image: linear-gradient(0deg, #b3b3b3 0%, #d1d1d1 100%);
+    color: rgb(32,39,41);
+}
+
+.LogIn-form p{
+    display: inline-block;
+    margin-bottom: 22px;
+    padding-bottom: 5px;
+    margin-top: 5px;
+
+}
+@media only screen and (max-device-width: 320px) {
+    .bodyheader {
+        height: 50px;
+    }
+    header img {
+        height: 35px;
+        width: 83px;
+        padding: 6px;
+    }   
+    nav {
+        display: none;
+    }
+    .GravatarImg {
+        border-radius: 0;
+    }
+}
+
+@media only screen and (max-device-width: 638px) {
+    header img {
+        padding: 12px;
+    }
+    nav {
+        display: none;
+    }
+    .GravatarImg {
+        border-radius: 0;
+    }
+    main {
+        position: fixed;
+        height: 100%;
+    }
+    .SendForm{
+        left: 0;
+    }
+}

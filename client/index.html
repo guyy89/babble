@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Vegans - Babble</title>
+        <link rel="stylesheet" type="text/css" href="styles/main2.css">
+        <!-- Google Fonts -->
+        <link href="https://fonts.googleapis.com/css?family=Comfortaa" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css?family=Nunito:400,700" rel="stylesheet">
+    </head>
+    <body>
+            <header class="BodyHeader">
+                <img src="images/babble_logo_mini.png" alt="Babble - Talk free LOGO">
+                <h1 class="BodyHeader-headerH1">Babble</h1>
+                <h1 class="BodyHeader-headerH1 small">Talk freely.</h1>
+            </header>
+        <div class="AllArea">
+            <nav>
+            </nav>
+            <div class="MainArea">
+                <aside class="Subject">
+                    <h2>Vegans</h2>
+                    <dl class="Rtl">
+                        <dt>
+                            <img src="images/msgnumber.png" alt="connected peopel">
+                        </dt>
+                        <dd class="NumberOfMessages">
+                           5
+                        </dd>
+                        <dt>
+                            <img src="images/peopelconnect.png" alt="connected peopel">
+                        </dt>
+                        <dd class="NumberOfUsers">                                    6
+                        </dd>
+                    </dl>
+                </aside>
+                <main class="Main">
+                        <ol class="AllMsgs">
+                        </ol>
+                </main>
+                <aside class="SendMsg">
+                    <form>
+                        <textarea class="TextSection"></textarea>
+                        <button class="SendButton" aria-label="Send my message" onclick="return Babble.postMessage('',upDataMessages)"></button>
+                    </form>
+                </aside>
+        </div>
+    </div>
+    <div class="LogIn">
+            <p class="LogIn-header">Who are you?</p>
+            <form class="LogIn-form">
+                <p>Full name:</p> <input class="LogIn-textBox" type="text" name="FullName" value="">
+                <br>
+                <p>Email:</p> <input class="LogIn-textBox" type="text" name="Email" value="">
+                <br>
+                <input class="LogIn-submitBox save" type="button" value="Save" onclick="LogInSave()">
+                <input class="LogIn-submitBox anonymous" type="button" value="Stay Anonymous" onclick="LogInAnonymous()">
+            </form>
+        </div>
+    <script src="scripts/func.js"></script>
+    <script>
+        InitLocalStorage();
+        LogIN();
+        Babble.getStats(upDataStats);   
+        Babble.longPolling();
+        calcNewGeo();
+    </script>
+    </body>
+</html>
