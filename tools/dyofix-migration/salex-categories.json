@@ -1,0 +1,1122 @@
+[
+ {
+  "slug": "מתחם-הטבות",
+  "name": "מתחם הטבות",
+  "parent_slug": "",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/cat_100_metcham_hatavot.png",
+  "salex_count": 5
+ },
+ {
+  "slug": "ציוד-לעסק-וללימודים",
+  "name": "ציוד לעסק וללימודים",
+  "parent_slug": "",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/cat_103_esek_limudim.png",
+  "salex_count": 2493
+ },
+ {
+  "slug": "עולם-הבית",
+  "name": "עולם הבית",
+  "parent_slug": "",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/cat_112_olam_habait.png",
+  "salex_count": 244
+ },
+ {
+  "slug": "מחשבים-וסלולר",
+  "name": "מחשבים וסלולר",
+  "parent_slug": "",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/cat_135_machshevim_selular.png",
+  "salex_count": 2056
+ },
+ {
+  "slug": "מוצרים-לתינוק-ולגיל-הרך",
+  "name": "מוצרים לתינוק ולגיל הרך",
+  "parent_slug": "",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/cat_178_tinok.png",
+  "salex_count": 231
+ },
+ {
+  "slug": "מסכים",
+  "name": "מסכים",
+  "parent_slug": "",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/cat_190_masachim.png",
+  "salex_count": 157
+ },
+ {
+  "slug": "מכשירי-חשמל",
+  "name": "מכשירי חשמל",
+  "parent_slug": "",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/cat_193_machshirei_chashmal.png",
+  "salex_count": 402
+ },
+ {
+  "slug": "עולם-הצילום",
+  "name": "עולם הצילום",
+  "parent_slug": "",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/cat_221_olam_hatzilum.png",
+  "salex_count": 8
+ },
+ {
+  "slug": "עולם-הרכב",
+  "name": "עולם הרכב",
+  "parent_slug": "",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/230_toplevel_extra.png",
+  "salex_count": 1
+ },
+ {
+  "slug": "צעצועים-וילדים",
+  "name": "צעצועים וילדים",
+  "parent_slug": "",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/cat_234_tzatzuim.png",
+  "salex_count": 669
+ },
+ {
+  "slug": "פארם-וקוסמטיקה",
+  "name": "פארם וקוסמטיקה",
+  "parent_slug": "",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/cat_306_pharm_cosmetica.png",
+  "salex_count": 1722
+ },
+ {
+  "slug": "כלי-עבודה",
+  "name": "כלי עבודה",
+  "parent_slug": "",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/cat_325_klei_avoda.png",
+  "salex_count": 152
+ },
+ {
+  "slug": "חצר-וגינה",
+  "name": "חצר וגינה",
+  "parent_slug": "",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/cat_333_chatzer_gina.png",
+  "salex_count": 41
+ },
+ {
+  "slug": "כרטיסי-מתנה",
+  "name": "כרטיסי מתנה",
+  "parent_slug": "מתחם-הטבות",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/102_metcham_kartisei_matana.png",
+  "salex_count": 3
+ },
+ {
+  "slug": "מדפסות-וסורקים",
+  "name": "מדפסות וסורקים",
+  "parent_slug": "ציוד-לעסק-וללימודים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/106_esek_madpasot.png",
+  "salex_count": 102
+ },
+ {
+  "slug": "ציוד-משרדי-וכלי-כתיבה",
+  "name": "ציוד משרדי וכלי כתיבה",
+  "parent_slug": "ציוד-לעסק-וללימודים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/107_esek_tziyud_misradi.png",
+  "salex_count": 121
+ },
+ {
+  "slug": "דיו-וטונרים",
+  "name": "דיו וטונרים",
+  "parent_slug": "ציוד-לעסק-וללימודים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/108_esek_dyo_tonerim.png",
+  "salex_count": 2217
+ },
+ {
+  "slug": "קוראי-ברקודים",
+  "name": "קוראי ברקודים",
+  "parent_slug": "ציוד-לעסק-וללימודים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/109_esek_korei_barkod.png",
+  "salex_count": 7
+ },
+ {
+  "slug": "תקשורת-לעסק-ולבית",
+  "name": "תקשורת לעסק ולבית",
+  "parent_slug": "ציוד-לעסק-וללימודים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/111_esek_tikshoret_esek.png",
+  "salex_count": 37
+ },
+ {
+  "slug": "קופות",
+  "name": "קופות",
+  "parent_slug": "ציוד-לעסק-וללימודים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/4549_esek_kupot.png",
+  "salex_count": 9
+ },
+ {
+  "slug": "כלי-בית",
+  "name": "כלי בית",
+  "parent_slug": "עולם-הבית",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/113_habait_klei_bait.png",
+  "salex_count": 153
+ },
+ {
+  "slug": "מוצרי-תאורה",
+  "name": "מוצרי תאורה",
+  "parent_slug": "עולם-הבית",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/117_habait_teura.png",
+  "salex_count": 6
+ },
+ {
+  "slug": "אינסטלציה",
+  "name": "אינסטלציה",
+  "parent_slug": "עולם-הבית",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/121_habait_instalatzia.png",
+  "salex_count": 3
+ },
+ {
+  "slug": "חיות-מחמד",
+  "name": "חיות מחמד",
+  "parent_slug": "עולם-הבית",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/123_habait_chayot_machmad.png",
+  "salex_count": 5
+ },
+ {
+  "slug": "קפה",
+  "name": "קפה",
+  "parent_slug": "עולם-הבית",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/124_habait_kafe.png",
+  "salex_count": 15
+ },
+ {
+  "slug": "סוללות",
+  "name": "סוללות",
+  "parent_slug": "עולם-הבית",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/125_habait_solelot.png",
+  "salex_count": 4
+ },
+ {
+  "slug": "נקיון",
+  "name": "נקיון",
+  "parent_slug": "עולם-הבית",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/127_habait_nikayon.png",
+  "salex_count": 39
+ },
+ {
+  "slug": "מוצרים-לשעת-חירום",
+  "name": "מוצרים לשעת חירום",
+  "parent_slug": "עולם-הבית",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/132_habait_shaat_cherum.png",
+  "salex_count": 2
+ },
+ {
+  "slug": "אביזרים-לרכב-חשמלי",
+  "name": "אביזרים לרכב חשמלי",
+  "parent_slug": "עולם-הבית",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/134_habait_rechev_chashmali.png",
+  "salex_count": 13
+ },
+ {
+  "slug": "למטבח",
+  "name": "למטבח",
+  "parent_slug": "עולם-הבית",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/4550_habait_lamitbach.png",
+  "salex_count": 4
+ },
+ {
+  "slug": "אביזרי-אמבטיה",
+  "name": "אביזרי אמבטיה",
+  "parent_slug": "אינסטלציה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/122_habait_avizrei_ambatya.png",
+  "salex_count": 3
+ },
+ {
+  "slug": "חומרי-ניקוי-לכביסה",
+  "name": "חומרי ניקוי לכביסה",
+  "parent_slug": "נקיון",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/128_habait_nikuy_kvisa.png",
+  "salex_count": 20
+ },
+ {
+  "slug": "חומרי-ניקוי-לכלים-ולמדיח",
+  "name": "חומרי ניקוי לכלים ולמדיח",
+  "parent_slug": "נקיון",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/129_habait_nikuy_kelim.png",
+  "salex_count": 8
+ },
+ {
+  "slug": "חומרי-ניקוי-נוספים",
+  "name": "חומרי ניקוי נוספים",
+  "parent_slug": "נקיון",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/130_habait_nikuy_nosafim.png",
+  "salex_count": 13
+ },
+ {
+  "slug": "מחשבים-ניידים",
+  "name": "מחשבים ניידים",
+  "parent_slug": "מחשבים-וסלולר",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/136_machshevim_nayadim.png",
+  "salex_count": 323
+ },
+ {
+  "slug": "מחשבים-נייחים",
+  "name": "מחשבים נייחים",
+  "parent_slug": "מחשבים-וסלולר",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/137_machshevim_nayachim.png",
+  "salex_count": 4
+ },
+ {
+  "slug": "טאבלטים",
+  "name": "טאבלטים",
+  "parent_slug": "מחשבים-וסלולר",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/138_machshevim_tabletim.png",
+  "salex_count": 2
+ },
+ {
+  "slug": "סלולר",
+  "name": "סלולר",
+  "parent_slug": "מחשבים-וסלולר",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/139_machshevim_selular.png",
+  "salex_count": 87
+ },
+ {
+  "slug": "שרתי-אחסון-nas",
+  "name": "שרתי אחסון NAS",
+  "parent_slug": "מחשבים-וסלולר",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/141_machshevim_nas.png",
+  "salex_count": 1
+ },
+ {
+  "slug": "תוכנות",
+  "name": "תוכנות",
+  "parent_slug": "מחשבים-וסלולר",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/142_machshevim_tochnot.png",
+  "salex_count": 24
+ },
+ {
+  "slug": "חומרה-למחשב",
+  "name": "חומרה למחשב",
+  "parent_slug": "מחשבים-וסלולר",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/143_machshevim_chumra.png",
+  "salex_count": 491
+ },
+ {
+  "slug": "סביבת-מחשב",
+  "name": "סביבת מחשב",
+  "parent_slug": "מחשבים-וסלולר",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/154_machshevim_svivat_machshev.png",
+  "salex_count": 760
+ },
+ {
+  "slug": "כבלים-ומתאמים",
+  "name": "כבלים ומתאמים",
+  "parent_slug": "מחשבים-וסלולר",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/171_machshevim_kvalim.png",
+  "salex_count": 252
+ },
+ {
+  "slug": "תקשורת",
+  "name": "תקשורת",
+  "parent_slug": "מחשבים-וסלולר",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/172_machshevim_tikshoret.png",
+  "salex_count": 112
+ },
+ {
+  "slug": "לוחות-אם",
+  "name": "לוחות אם",
+  "parent_slug": "חומרה-למחשב",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/144_machshevim_luchot_em.png",
+  "salex_count": 110
+ },
+ {
+  "slug": "מארזים",
+  "name": "מארזים",
+  "parent_slug": "חומרה-למחשב",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/145_machshevim_maarazim_pc.png",
+  "salex_count": 8
+ },
+ {
+  "slug": "כרטיסי-רשת",
+  "name": "כרטיסי רשת",
+  "parent_slug": "חומרה-למחשב",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/146_machshevim_kartisei_reshet_h.png",
+  "salex_count": 19
+ },
+ {
+  "slug": "כרטיסי-מסך",
+  "name": "כרטיסי מסך",
+  "parent_slug": "חומרה-למחשב",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/147_machshevim_kartisei_masach.png",
+  "salex_count": 65
+ },
+ {
+  "slug": "מאווררים",
+  "name": "מאווררים",
+  "parent_slug": "חומרה-למחשב",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/148_machshevim_mefonenim_pc.png",
+  "salex_count": 45
+ },
+ {
+  "slug": "דיסקים-קשיחים",
+  "name": "דיסקים קשיחים",
+  "parent_slug": "חומרה-למחשב",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/150_machshevim_diskim_kshichim.png",
+  "salex_count": 62
+ },
+ {
+  "slug": "זיכרונות",
+  "name": "זיכרונות",
+  "parent_slug": "חומרה-למחשב",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/151_machshevim_zichronot.png",
+  "salex_count": 64
+ },
+ {
+  "slug": "מעבדים",
+  "name": "מעבדים",
+  "parent_slug": "חומרה-למחשב",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/152_machshevim_maabadim.png",
+  "salex_count": 38
+ },
+ {
+  "slug": "ספקי-כוח",
+  "name": "ספקי כוח",
+  "parent_slug": "חומרה-למחשב",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/153_machshevim_sapakei_koach.png",
+  "salex_count": 79
+ },
+ {
+  "slug": "אוזניות",
+  "name": "אוזניות",
+  "parent_slug": "סביבת-מחשב",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/156_machshevim_ozniyot.png",
+  "salex_count": 16
+ },
+ {
+  "slug": "אביזרים-למחשבים-ניידים",
+  "name": "אביזרים למחשבים ניידים",
+  "parent_slug": "סביבת-מחשב",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/166_machshevim_avizrei_laptop.png",
+  "salex_count": 11
+ },
+ {
+  "slug": "כסאות-גיימינג",
+  "name": "כסאות גיימינג",
+  "parent_slug": "סביבת-מחשב",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/168_machshevim_kisot_gaming.png",
+  "salex_count": 5
+ },
+ {
+  "slug": "קוראי-כרטיסים",
+  "name": "קוראי כרטיסים",
+  "parent_slug": "סביבת-מחשב",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/170_machshevim_korei_kartisim.png",
+  "salex_count": 2
+ },
+ {
+  "slug": "מוצצים",
+  "name": "מוצצים",
+  "parent_slug": "מוצרים-לתינוק-ולגיל-הרך",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/179_tinok_motzetzim.png",
+  "salex_count": 63
+ },
+ {
+  "slug": "כוסות-ובקבוקים",
+  "name": "כוסות ובקבוקים",
+  "parent_slug": "מוצרים-לתינוק-ולגיל-הרך",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/180_tinok_kosot_bakbukim.png",
+  "salex_count": 60
+ },
+ {
+  "slug": "פטמות",
+  "name": "פטמות",
+  "parent_slug": "מוצרים-לתינוק-ולגיל-הרך",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/181_tinok_pitmot.png",
+  "salex_count": 18
+ },
+ {
+  "slug": "החתלה",
+  "name": "החתלה",
+  "parent_slug": "מוצרים-לתינוק-ולגיל-הרך",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/182_tinok_hachtala.png",
+  "salex_count": 16
+ },
+ {
+  "slug": "עזרי-האכלה",
+  "name": "עזרי האכלה",
+  "parent_slug": "מוצרים-לתינוק-ולגיל-הרך",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/183_tinok_ezrei_haachala.png",
+  "salex_count": 11
+ },
+ {
+  "slug": "משחקים-לתינוק",
+  "name": "משחקים לתינוק",
+  "parent_slug": "מוצרים-לתינוק-ולגיל-הרך",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/184_tinok_mischakim_tinok.png",
+  "salex_count": 11
+ },
+ {
+  "slug": "נשכנים",
+  "name": "נשכנים",
+  "parent_slug": "מוצרים-לתינוק-ולגיל-הרך",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/185_tinok_nashchanim.png",
+  "salex_count": 4
+ },
+ {
+  "slug": "טיפוח-התינוק",
+  "name": "טיפוח התינוק",
+  "parent_slug": "מוצרים-לתינוק-ולגיל-הרך",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/186_tinok_tipuach_hatinok.png",
+  "salex_count": 6
+ },
+ {
+  "slug": "עזרי-הנקה",
+  "name": "עזרי הנקה",
+  "parent_slug": "מוצרים-לתינוק-ולגיל-הרך",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/187_tinok_ezrei_hanaka.png",
+  "salex_count": 5
+ },
+ {
+  "slug": "מגבונים",
+  "name": "מגבונים",
+  "parent_slug": "מוצרים-לתינוק-ולגיל-הרך",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/188_tinok_magbonim.png",
+  "salex_count": 2
+ },
+ {
+  "slug": "טקסטיל-לתינוק",
+  "name": "טקסטיל לתינוק",
+  "parent_slug": "מוצרים-לתינוק-ולגיל-הרך",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/189_tinok_tekstil_tinok.png",
+  "salex_count": 5
+ },
+ {
+  "slug": "שקי-שינה",
+  "name": "שקי שינה",
+  "parent_slug": "מוצרים-לתינוק-ולגיל-הרך",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/cat_sleep_sacks.png",
+  "salex_count": 15
+ },
+ {
+  "slug": "שואבי-אבק",
+  "name": "שואבי אבק",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/194_chashmal_shoavei_avak.png",
+  "salex_count": 16
+ },
+ {
+  "slug": "גרילים-ומעשנות",
+  "name": "גרילים ומעשנות",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/195_chashmal_grilim.png",
+  "salex_count": 9
+ },
+ {
+  "slug": "משקלים-מכשירי-חשמל",
+  "name": "משקלים",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/196_chashmal_mishkalim_kitchen.png",
+  "salex_count": 3
+ },
+ {
+  "slug": "מטחנות",
+  "name": "מטחנות",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/197_chashmal_matchanot.png",
+  "salex_count": 8
+ },
+ {
+  "slug": "מיוחדים-למטבח",
+  "name": "מיוחדים למטבח",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/198_chashmal_meyuchadim_mitbach.png",
+  "salex_count": 17
+ },
+ {
+  "slug": "טוסטרים",
+  "name": "טוסטרים",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/199_chashmal_tosterim.png",
+  "salex_count": 38
+ },
+ {
+  "slug": "טוסטר-אובן",
+  "name": "טוסטר אובן",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/200_chashmal_toster_oven.png",
+  "salex_count": 14
+ },
+ {
+  "slug": "קוצצי-ירקות",
+  "name": "קוצצי ירקות",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/201_chashmal_kotzetzei_yerakot.png",
+  "salex_count": 6
+ },
+ {
+  "slug": "בלנדרים",
+  "name": "בלנדרים",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/202_chashmal_blenderim.png",
+  "salex_count": 19
+ },
+ {
+  "slug": "קומקומים",
+  "name": "קומקומים",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/203_chashmal_komkomim.png",
+  "salex_count": 77
+ },
+ {
+  "slug": "תנורים-ומפזרי-חום",
+  "name": "תנורים ומפזרי חום",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/204_chashmal_tanurim.png",
+  "salex_count": 23
+ },
+ {
+  "slug": "מיקרוגלים",
+  "name": "מיקרוגלים",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/205_chashmal_microgalim.png",
+  "salex_count": 19
+ },
+ {
+  "slug": "מיקסרים",
+  "name": "מיקסרים",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/206_chashmal_mixerim.png",
+  "salex_count": 14
+ },
+ {
+  "slug": "מעבדי-מזון",
+  "name": "מעבדי מזון",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/207_chashmal_meabdei_mazon.png",
+  "salex_count": 4
+ },
+ {
+  "slug": "סירי-בישול-וטיגון",
+  "name": "סירי בישול וטיגון",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/208_chashmal_sirei_bishul.png",
+  "salex_count": 15
+ },
+ {
+  "slug": "מיחמים-ופלטות-שבת",
+  "name": "מיחמים ופלטות שבת",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/210_chashmal_michamim.png",
+  "salex_count": 6
+ },
+ {
+  "slug": "מפצלים-מאריכים-מגיני-ברקים",
+  "name": "מפצלים/מאריכים/מגיני ברקים",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/211_chashmal_maftzelim.png",
+  "salex_count": 13
+ },
+ {
+  "slug": "קוטלי-יתושים",
+  "name": "קוטלי יתושים",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/213_chashmal_kotlei_yatushim.png",
+  "salex_count": 16
+ },
+ {
+  "slug": "כיריים",
+  "name": "כיריים",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/214_chashmal_kirayim.png",
+  "salex_count": 28
+ },
+ {
+  "slug": "מגהצים",
+  "name": "מגהצים",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/215_chashmal_magehatzim.png",
+  "salex_count": 12
+ },
+ {
+  "slug": "מסחטות-מיצים",
+  "name": "מסחטות מיצים",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/216_chashmal_maschetot.png",
+  "salex_count": 15
+ },
+ {
+  "slug": "טלויזיות",
+  "name": "טלויזיות",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/4545_chashmal_televizyot.png",
+  "salex_count": 39
+ },
+ {
+  "slug": "מוצרי-חורף",
+  "name": "מוצרי חורף",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/4546_chashmal_mutzrei_choref.png",
+  "salex_count": 1
+ },
+ {
+  "slug": "מוצרי-טיפוח",
+  "name": "מוצרי טיפוח",
+  "parent_slug": "מכשירי-חשמל",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/4547_chashmal_mutzrei_tipuach.png",
+  "salex_count": 16
+ },
+ {
+  "slug": "מצלמות-רכב",
+  "name": "מצלמות רכב",
+  "parent_slug": "עולם-הצילום",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/222_tzilum_matzlemot_rechev.png",
+  "salex_count": 2
+ },
+ {
+  "slug": "מצלמות-אבטחה",
+  "name": "מצלמות אבטחה",
+  "parent_slug": "עולם-הצילום",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/223_tzilum_matzlemot_avtacha.png",
+  "salex_count": 6
+ },
+ {
+  "slug": "מצלמות-דיגיטליות",
+  "name": "מצלמות דיגיטליות",
+  "parent_slug": "עולם-הצילום",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/224_tzilum_matzlemot_digital.png",
+  "salex_count": 2
+ },
+ {
+  "slug": "מצלמות-אקסטרים",
+  "name": "מצלמות אקסטרים",
+  "parent_slug": "עולם-הצילום",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/225_tzilum_extreme.png",
+  "salex_count": 4
+ },
+ {
+  "slug": "אביזרים-למשחקים",
+  "name": "אביזרים למשחקים",
+  "parent_slug": "צעצועים-וילדים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/235_tzatzuim_avizrei_mischakim.png",
+  "salex_count": 1
+ },
+ {
+  "slug": "בובות-ודמויות-צעצוע",
+  "name": "בובות ודמויות צעצוע",
+  "parent_slug": "צעצועים-וילדים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/237_tzatzuim_bubot.png",
+  "salex_count": 150
+ },
+ {
+  "slug": "בריכות-ומשחקי-מים",
+  "name": "בריכות ומשחקי מים",
+  "parent_slug": "צעצועים-וילדים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/245_tzatzuim_bereichot_mayim.png",
+  "salex_count": 5
+ },
+ {
+  "slug": "כלי-רכב-צעצוע",
+  "name": "כלי רכב צעצוע",
+  "parent_slug": "צעצועים-וילדים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/247_tzatzuim_klei_rechev.png",
+  "salex_count": 87
+ },
+ {
+  "slug": "משחקי-יצירה",
+  "name": "משחקי יצירה",
+  "parent_slug": "צעצועים-וילדים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/256_tzatzuim_mischakei_yetzira.png",
+  "salex_count": 4
+ },
+ {
+  "slug": "משחקי-כאילו",
+  "name": "משחקי כאילו",
+  "parent_slug": "צעצועים-וילדים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/257_tzatzuim_mischakei_keilu.png",
+  "salex_count": 33
+ },
+ {
+  "slug": "משחקי-קופסא",
+  "name": "משחקי קופסא",
+  "parent_slug": "צעצועים-וילדים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/265_tzatzuim_mischakei_kufsa.png",
+  "salex_count": 149
+ },
+ {
+  "slug": "פאזלים",
+  "name": "פאזלים",
+  "parent_slug": "צעצועים-וילדים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/276_tzatzuim_pazlim.png",
+  "salex_count": 79
+ },
+ {
+  "slug": "צעצועי-בנייה",
+  "name": "צעצועי בנייה",
+  "parent_slug": "צעצועים-וילדים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/279_tzatzuim_tzatzuei_bniya.png",
+  "salex_count": 164
+ },
+ {
+  "slug": "צעצועי-כלי-נשק-ורובוטים",
+  "name": "צעצועי כלי נשק ורובוטים",
+  "parent_slug": "צעצועים-וילדים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/286_tzatzuim_neshek_robotim.png",
+  "salex_count": 20
+ },
+ {
+  "slug": "צעצועי-פעילות",
+  "name": "צעצועי פעילות",
+  "parent_slug": "צעצועים-וילדים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/289_tzatzuim_peilut.png",
+  "salex_count": 3
+ },
+ {
+  "slug": "צעצועים-חינוכיים",
+  "name": "צעצועים חינוכיים",
+  "parent_slug": "צעצועים-וילדים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/294_tzatzuim_chinuchiyim.png",
+  "salex_count": 13
+ },
+ {
+  "slug": "צעצועים-מוזיקליים",
+  "name": "צעצועים מוזיקליים",
+  "parent_slug": "צעצועים-וילדים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/300_tzatzuim_muzikaliyim.png",
+  "salex_count": 2
+ },
+ {
+  "slug": "צעצועים-על-שלט",
+  "name": "צעצועים על שלט",
+  "parent_slug": "צעצועים-וילדים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/302_tzatzuim_al_shalat.png",
+  "salex_count": 2
+ },
+ {
+  "slug": "אופניים-וקורקינטים",
+  "name": "אופניים וקורקינטים",
+  "parent_slug": "צעצועים-וילדים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/4548_tzatzuim_ofanaim.png",
+  "salex_count": 28
+ },
+ {
+  "slug": "בישום",
+  "name": "בישום",
+  "parent_slug": "פארם-וקוסמטיקה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/307_pharm_bisum.png",
+  "salex_count": 1171
+ },
+ {
+  "slug": "קרמים-ודאודורנטים",
+  "name": "קרמים ודאודורנטים",
+  "parent_slug": "פארם-וקוסמטיקה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/311_pharm_kremim_deo.png",
+  "salex_count": 225
+ },
+ {
+  "slug": "הגנה-מהשמש-ושיזוף",
+  "name": "הגנה מהשמש ושיזוף",
+  "parent_slug": "פארם-וקוסמטיקה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/313_pharm_hagana_shemesh.png",
+  "salex_count": 23
+ },
+ {
+  "slug": "רפואה",
+  "name": "רפואה",
+  "parent_slug": "פארם-וקוסמטיקה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/314_pharm_refua.png",
+  "salex_count": 1
+ },
+ {
+  "slug": "טיפוח-ועיצוב-שיער",
+  "name": "טיפוח ועיצוב שיער",
+  "parent_slug": "פארם-וקוסמטיקה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/315_pharm_tipuach_sear.png",
+  "salex_count": 22
+ },
+ {
+  "slug": "תזונה-לספורט-והתעמלות",
+  "name": "תזונה לספורט והתעמלות",
+  "parent_slug": "פארם-וקוסמטיקה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/316_pharm_tzuna_sport.png",
+  "salex_count": 2
+ },
+ {
+  "slug": "צבעי-שיער",
+  "name": "צבעי שיער",
+  "parent_slug": "פארם-וקוסמטיקה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/317_pharm_tzivei_sear.png",
+  "salex_count": 7
+ },
+ {
+  "slug": "דוחה-יתושים",
+  "name": "דוחה יתושים",
+  "parent_slug": "פארם-וקוסמטיקה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/318_pharm_doche_yatushim.png",
+  "salex_count": 6
+ },
+ {
+  "slug": "רחצה-והיגיינת-הגוף",
+  "name": "רחצה והיגיינת הגוף",
+  "parent_slug": "פארם-וקוסמטיקה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/319_pharm_rachatza.png",
+  "salex_count": 9
+ },
+ {
+  "slug": "איפור",
+  "name": "איפור",
+  "parent_slug": "פארם-וקוסמטיקה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/320_pharm_ipur.png",
+  "salex_count": 125
+ },
+ {
+  "slug": "היגיינת-הפה",
+  "name": "היגיינת הפה",
+  "parent_slug": "פארם-וקוסמטיקה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/321_pharm_higyenat_hape.png",
+  "salex_count": 64
+ },
+ {
+  "slug": "היגיינה-נשית",
+  "name": "היגיינה נשית",
+  "parent_slug": "פארם-וקוסמטיקה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/322_pharm_higyena_nashit.png",
+  "salex_count": 41
+ },
+ {
+  "slug": "גילוח-והסרת-שיער",
+  "name": "גילוח והסרת שיער",
+  "parent_slug": "פארם-וקוסמטיקה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/324_pharm_giluach.png",
+  "salex_count": 28
+ },
+ {
+  "slug": "בשמים-לאישה",
+  "name": "בשמים לאישה",
+  "parent_slug": "בישום",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/308_pharm_bsamim_isha.png",
+  "salex_count": 493
+ },
+ {
+  "slug": "בשמים-לגבר",
+  "name": "בשמים לגבר",
+  "parent_slug": "בישום",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/309_pharm_bsamim_gever.png",
+  "salex_count": 673
+ },
+ {
+  "slug": "בקבוקי-מילוי",
+  "name": "בקבוקי מילוי",
+  "parent_slug": "בישום",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/310_pharm_bakbukei_milui.png",
+  "salex_count": 5
+ },
+ {
+  "slug": "מכונות-שטיפה",
+  "name": "מכונות שטיפה",
+  "parent_slug": "כלי-עבודה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/326_klei_avoda_mechonot_shtifa.png",
+  "salex_count": 8
+ },
+ {
+  "slug": "כלי-עבודה-ידניים",
+  "name": "כלי עבודה ידניים",
+  "parent_slug": "כלי-עבודה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/327_klei_avoda_yadaniyim.png",
+  "salex_count": 1
+ },
+ {
+  "slug": "עגלות-משא",
+  "name": "עגלות משא",
+  "parent_slug": "כלי-עבודה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/328_klei_avoda_eglot_masa.png",
+  "salex_count": 4
+ },
+ {
+  "slug": "כלי-עבודה-חשמליים",
+  "name": "כלי עבודה חשמליים",
+  "parent_slug": "כלי-עבודה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/329_klei_avoda_chashmaliyim.png",
+  "salex_count": 140
+ },
+ {
+  "slug": "ארגזי-כלים-וארגוניות",
+  "name": "ארגזי כלים וארגוניות",
+  "parent_slug": "כלי-עבודה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/330_klei_avoda_argazei_kelim.png",
+  "salex_count": 1
+ },
+ {
+  "slug": "מוצרים-משלימים",
+  "name": "מוצרים משלימים",
+  "parent_slug": "כלי-עבודה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/331_klei_avoda_mashlimim.png",
+  "salex_count": 2
+ },
+ {
+  "slug": "גנרטורים",
+  "name": "גנרטורים",
+  "parent_slug": "כלי-עבודה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/332_klei_avoda_generatorim.png",
+  "salex_count": 5
+ },
+ {
+  "slug": "כלי-גינון",
+  "name": "כלי גינון",
+  "parent_slug": "חצר-וגינה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/334_chatzer_klei_ginun.png",
+  "salex_count": 27
+ },
+ {
+  "slug": "מוצרים-לגינה",
+  "name": "מוצרים לגינה",
+  "parent_slug": "חצר-וגינה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/335_chatzer_mutzrei_gina.png",
+  "salex_count": 4
+ },
+ {
+  "slug": "בריכות-וציוד-מים",
+  "name": "בריכות וציוד מים",
+  "parent_slug": "חצר-וגינה",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/336_chatzer_berichot_tzion.png",
+  "salex_count": 11
+ },
+ {
+  "slug": "בריכות",
+  "name": "בריכות",
+  "parent_slug": "בריכות-וציוד-מים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/337_chatzer_berichot.png",
+  "salex_count": 7
+ },
+ {
+  "slug": "מוצרים-לים-ולבריכה",
+  "name": "מוצרים לים ולבריכה",
+  "parent_slug": "בריכות-וציוד-מים",
+  "description": "",
+  "image": "https://salex.co.il/wp-content/uploads/2026/07/338_chatzer_yam_bereicha.png",
+  "salex_count": 4
+ }
+]
