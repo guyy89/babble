@@ -1,0 +1,118 @@
+import type { Bar } from '../types.js';
+import { BaseFeed } from './feed.js';
+
+// Real-time US equities data from Alpaca's market data API (free tier = IEX feed).
+// Docs: https://docs.alpaca.markets/docs/real-time-stock-pricing-data
+
+interface AlpacaCreds {
+  keyId: string;
+  secretKey: string;
+  feed: string; // 'iex' (free) or 'sip' (paid)
+}
+
+const REST = 'https://data.alpaca.markets/v2';
+
+export class AlpacaFeed extends BaseFeed {
+  readonly name = 'alpaca';
+  private ws?: WebSocket;
+  private stopped = false;
+  private reconnectDelay = 1000;
+
+  constructor(symbols: string[], private readonly creds: AlpacaCreds) {
+    super(symbols);
+    if (!creds.keyId || !creds.secretKey) {
+      throw new Error('DATA_SOURCE=alpaca requires ALPACA_KEY_ID and ALPACA_SECRET_KEY');
+    }
+  }
+
+  private headers() {
+    return { 'APCA-API-KEY-ID': this.creds.keyId, 'APCA-API-SECRET-KEY': this.creds.secretKey };
+  }
+
+  async start(): Promise<void> {
+    await Promise.all(this.symbolList.map((s) => this.loadHistory(s)));
+    await this.loadSnapshots();
+    this.connect();
+  }
+
+  stop(): void {
+    this.stopped = true;
+    this.ws?.close();
+  }
+
+  private async loadHistory(symbol: string): Promise<void> {
+    const start = new Date(Date.now() - 4 * 24 * 3600_000).toISOString();
+    const url = `${REST}/stocks/${symbol}/bars?timeframe=1Min&limit=1000&sort=desc&feed=${this.creds.feed}&start=${start}`;
+    const res = await fetch(url, { headers: this.headers() });
+    if (!res.ok) throw new Error(`Alpaca bars ${symbol}: ${res.status} ${await res.text()}`);
+    const body = (await res.json()) as { bars: Array<{ t: string; o: number; h: number; l: number; c: number; v: number }> | null };
+    const bars: Bar[] = (body.bars ?? [])
+      .map((b) => ({ symbol, t: Date.parse(b.t), o: b.o, h: b.h, l: b.l, c: b.c, v: b.v }))
+      .reverse();
+    this.seedBars(symbol, bars);
+  }
+
+  private async loadSnapshots(): Promise<void> {
+    const url = `${REST}/stocks/snapshots?symbols=${this.symbolList.join(',')}&feed=${this.creds.feed}`;
+    const res = await fetch(url, { headers: this.headers() });
+    if (!res.ok) throw new Error(`Alpaca snapshots: ${res.status} ${await res.text()}`);
+    const body = (await res.json()) as Record<string, { latestQuote?: AQuote; latestTrade?: { p: number } }>;
+    for (const [symbol, snap] of Object.entries(body)) {
+      const q = snap.latestQuote;
+      if (!q) continue;
+      this.publishQuote({
+        symbol, bid: q.bp, ask: q.ap, bidSize: q.bs, askSize: q.as,
+        last: snap.latestTrade?.p ?? (q.bp + q.ap) / 2, ts: Date.parse(q.t),
+      });
+    }
+  }
+
+  private connect(): void {
+    const ws = new WebSocket(`wss://stream.data.alpaca.markets/v2/${this.creds.feed}`);
+    this.ws = ws;
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ action: 'auth', key: this.creds.keyId, secret: this.creds.secretKey }));
+    };
+    ws.onmessage = (ev) => {
+      const msgs = JSON.parse(String(ev.data)) as AlpacaMsg[];
+      for (const m of msgs) this.handle(m);
+    };
+    ws.onclose = () => {
+      if (this.stopped) return;
+      console.warn(`[alpaca] stream closed, reconnecting in ${this.reconnectDelay}ms`);
+      setTimeout(() => this.connect(), this.reconnectDelay);
+      this.reconnectDelay = Math.min(this.reconnectDelay * 2, 30_000);
+    };
+    ws.onerror = (e) => console.error('[alpaca] stream error', (e as ErrorEvent).message ?? e);
+  }
+
+  private handle(m: AlpacaMsg): void {
+    switch (m.T) {
+      case 'success':
+        if (m.msg === 'authenticated') {
+          this.reconnectDelay = 1000;
+          this.ws?.send(JSON.stringify({ action: 'subscribe', quotes: this.symbolList, trades: this.symbolList }));
+        }
+        break;
+      case 'error':
+        console.error(`[alpaca] ${m.code}: ${m.msg}`);
+        break;
+      case 'q':
+        if (m.bp > 0 && m.ap > 0) {
+          this.publishQuote({ symbol: m.S, bid: m.bp, ask: m.ap, bidSize: m.bs, askSize: m.as, last: 0, ts: Date.parse(m.t) });
+        }
+        break;
+      case 't':
+        this.publishTrade({ symbol: m.S, price: m.p, size: m.s, ts: Date.parse(m.t) });
+        break;
+    }
+  }
+}
+
+interface AQuote { bp: number; ap: number; bs: number; as: number; t: string }
+type AlpacaMsg =
+  | { T: 'success'; msg: string }
+  | { T: 'error'; code: number; msg: string }
+  | ({ T: 'q'; S: string } & AQuote)
+  | { T: 't'; S: string; p: number; s: number; t: string }
+  | { T: 'subscription' };

@@ -1,0 +1,125 @@
+// Shared domain types. These mirror the shapes used by real broker APIs (Alpaca in particular)
+// so that swapping the paper broker for a live one does not ripple through the codebase.
+
+export type Side = 'buy' | 'sell';
+export type OrderType = 'market' | 'limit' | 'stop' | 'stop_limit';
+export type TimeInForce = 'day' | 'gtc';
+export type OrderStatus =
+  | 'new' // accepted, waiting
+  | 'held' // bracket child waiting for parent to fill
+  | 'partially_filled'
+  | 'filled'
+  | 'canceled'
+  | 'rejected'
+  | 'expired';
+
+export interface Quote {
+  symbol: string;
+  bid: number;
+  ask: number;
+  bidSize: number;
+  askSize: number;
+  last: number;
+  ts: number;
+}
+
+export interface Trade {
+  symbol: string;
+  price: number;
+  size: number;
+  ts: number;
+}
+
+export interface Bar {
+  symbol: string;
+  t: number; // bar start, epoch ms
+  o: number;
+  h: number;
+  l: number;
+  c: number;
+  v: number;
+}
+
+export interface OrderRequest {
+  symbol: string;
+  side: Side;
+  qty: number;
+  type: OrderType;
+  limitPrice?: number;
+  stopPrice?: number;
+  tif?: TimeInForce;
+  /** Bracket legs. Activated once the entry order fills. */
+  takeProfit?: { limitPrice: number };
+  stopLoss?: { stopPrice: number };
+  clientOrderId?: string;
+}
+
+export interface Order {
+  id: string;
+  clientOrderId?: string;
+  symbol: string;
+  side: Side;
+  qty: number;
+  type: OrderType;
+  limitPrice?: number;
+  stopPrice?: number;
+  tif: TimeInForce;
+  status: OrderStatus;
+  filledQty: number;
+  avgFillPrice: number;
+  createdAt: number;
+  updatedAt: number;
+  rejectReason?: string;
+  /** Set once a stop / stop_limit order has been triggered. */
+  triggered?: boolean;
+  /** For bracket children: the entry order id. */
+  parentId?: string;
+  /** For bracket entries: the child order ids (take-profit, stop-loss). */
+  legIds?: string[];
+  /** Orders sharing an ocoGroup cancel each other when one fills. */
+  ocoGroup?: string;
+}
+
+export interface Fill {
+  id: string;
+  orderId: string;
+  symbol: string;
+  side: Side;
+  qty: number;
+  price: number;
+  commission: number;
+  ts: number;
+}
+
+export interface Position {
+  symbol: string;
+  qty: number; // signed: negative = short
+  avgPrice: number;
+  marketPrice: number;
+  marketValue: number;
+  unrealizedPnl: number;
+  realizedPnlToday: number;
+}
+
+export interface Account {
+  mode: string;
+  accountType: 'cash' | 'margin';
+  cash: number;
+  equity: number;
+  longMarketValue: number;
+  shortMarketValue: number;
+  buyingPower: number;
+  dayStartEquity: number;
+  dayPnl: number;
+  realizedPnlToday: number;
+  commissionsToday: number;
+  dayTradeCount: number; // rolling 5 business days
+  patternDayTrader: boolean;
+  tradingBlocked: boolean;
+  blockReason?: string;
+}
+
+export interface ServerEvent {
+  type: 'quote' | 'bar' | 'order' | 'fill' | 'account' | 'positions' | 'clock' | 'notice';
+  data: unknown;
+}
