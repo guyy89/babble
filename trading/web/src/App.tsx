@@ -20,6 +20,10 @@ export function App() {
   const position = state.positions.find((p) => p.symbol === symbol);
   const a = state.account;
 
+  const resetAccount = () => {
+    if (confirm('Reset the paper account? All positions, orders and history will be erased.')) api.resetAccount();
+  };
+
   const flattenAll = () => {
     if (confirm('Cancel all orders and close every position at market?')) api.flattenAll();
   };
@@ -42,10 +46,14 @@ export function App() {
             <Stat label="Equity" value={money(a.equity)} />
             <Stat label="Day P&L" value={signed(a.dayPnl)} cls={pnlClass(a.dayPnl)} />
             <Stat label="Realized" value={signed(a.realizedPnlToday)} cls={pnlClass(a.realizedPnlToday)} />
+            <Stat label="Fees today" value={money(a.commissionsToday)} />
             <Stat label="Buying power" value={money(a.buyingPower)} />
-            <Stat label="Day trades (5d)" value={`${a.dayTradeCount}${a.equity < 25000 && a.accountType === 'margin' ? ' / 3' : ''}`} />
+            {a.marginModel === 'pdt' && (
+              <Stat label="Day trades (5d)" value={`${a.dayTradeCount}${a.equity < 25000 && a.accountType === 'margin' ? ' / 3' : ''}`} />
+            )}
           </div>
         )}
+        {state.broker === 'paper' && <button onClick={resetAccount}>Reset</button>}
         <button className="danger" onClick={flattenAll}>Flatten all</button>
       </header>
 
@@ -88,7 +96,8 @@ export function App() {
       </main>
 
       {symbol && (
-        <OrderTicket symbol={symbol} quote={state.quotes[symbol]} position={position} account={a} pickedPrice={picked} />
+        <OrderTicket symbol={symbol} quote={state.quotes[symbol]} position={position} account={a}
+          settings={state.settings} pickedPrice={picked} />
       )}
 
       <Blotter positions={state.positions} orders={orders} fills={state.fills} onSelect={setSelected} />

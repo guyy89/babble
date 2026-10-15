@@ -1,7 +1,8 @@
 import { useEffect, useReducer } from 'react';
+import type { PublicSettings } from '../../server/src/api/server';
 import type { Account, Bar, Fill, Order, Position, Quote } from '../../server/src/types';
 
-export type { Account, Bar, Fill, Order, Position, Quote };
+export type { Account, Bar, Fill, Order, Position, PublicSettings, Quote };
 
 export interface Clock {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export interface State {
   connected: boolean;
   dataSource: string;
   broker: string;
+  settings?: PublicSettings;
   clock?: Clock;
   symbols: string[];
   quotes: Record<string, Quote>;
@@ -56,6 +58,7 @@ function reducer(s: State, a: Action): State {
         ...s,
         dataSource: d.dataSource,
         broker: d.broker,
+        settings: d.settings,
         clock: d.clock,
         symbols: d.symbols,
         quotes: Object.fromEntries((d.quotes as Quote[]).map((q) => [q.symbol, q])),

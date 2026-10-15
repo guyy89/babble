@@ -4,10 +4,17 @@ import { resolve } from 'node:path';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import { BrokerError } from '../broker/broker.js';
+import type { FeeSchedule } from '../broker/fees.js';
+import type { RiskConfig } from '../config.js';
 import type { TradingService } from '../tradingService.js';
 import type { OrderRequest } from '../types.js';
 
-export function createApiServer(svc: TradingService): Server {
+export interface PublicSettings {
+  fees?: FeeSchedule;
+  risk: RiskConfig;
+}
+
+export function createApiServer(svc: TradingService, settings: PublicSettings): Server {
   const app = express();
   app.use(express.json());
 
@@ -26,6 +33,18 @@ export function createApiServer(svc: TradingService): Server {
     res.json(feed.getBars(req.params.symbol.toUpperCase()));
   });
   app.get('/api/account', async (_req, res) => {
+    res.json(await svc.account());
+  });
+  app.get('/api/settings', (_req, res) => {
+    res.json(settings);
+  });
+  app.post('/api/account/reset', async (_req, res) => {
+    const resettable = broker as typeof broker & { reset?: () => Promise<void> };
+    if (!resettable.reset) throw new BrokerError('only a paper account can be reset', 409);
+    await resettable.reset();
+    const msg = await snapshot();
+    for (const client of wss.clients) if (client.readyState === WebSocket.OPEN) client.send(msg);
+    svc.notice('info', 'Paper account reset');
     res.json(await svc.account());
   });
   app.get('/api/positions', async (_req, res) => {
@@ -73,14 +92,16 @@ export function createApiServer(svc: TradingService): Server {
   const server = createServer(app);
   const wss = new WebSocketServer({ server, path: '/ws' });
 
-  wss.on('connection', async (ws) => {
-    // Initial snapshot so the client never has to stitch REST + stream timing together.
-    ws.send(JSON.stringify({
+  // Full state, sent on connect (so the client never stitches REST + stream timing together)
+  // and broadcast after an account reset.
+  const snapshot = async () =>
+    JSON.stringify({
       type: 'snapshot',
       data: {
         clock: clock.state(),
         dataSource: feed.name,
         broker: broker.name,
+        settings,
         symbols: feed.symbols(),
         quotes: feed.symbols().map((s) => feed.getQuote(s)).filter(Boolean),
         account: await svc.account(),
@@ -88,7 +109,10 @@ export function createApiServer(svc: TradingService): Server {
         orders: await broker.getOrders('all'),
         fills: (await broker.getFills()).slice(0, 200),
       },
-    }));
+    });
+
+  wss.on('connection', async (ws) => {
+    ws.send(await snapshot());
   });
 
   svc.on('event', (ev) => {

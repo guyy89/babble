@@ -34,6 +34,18 @@ export class RiskManager {
     const price = req.limitPrice ?? req.stopPrice ?? (req.side === 'buy' ? ctx.quote?.ask : ctx.quote?.bid);
     if (!price) return null;
 
+    if (this.cfg.maxRiskPerTrade > 0) {
+      const stop = req.stopLoss?.stopPrice;
+      if (stop === undefined) {
+        return `a stop-loss is required on every new position (max risk $${this.cfg.maxRiskPerTrade} per trade)`;
+      }
+      const risk = qty * Math.abs(price - Number(stop));
+      if (risk > this.cfg.maxRiskPerTrade + 1e-6) {
+        const maxQty = Math.floor(this.cfg.maxRiskPerTrade / Math.abs(price - Number(stop)));
+        return `risk to stop $${risk.toFixed(2)} exceeds max $${this.cfg.maxRiskPerTrade} per trade (max ${maxQty} shares at this stop)`;
+      }
+    }
+
     const orderNotional = qty * price;
     if (this.cfg.maxOrderNotional > 0 && orderNotional > this.cfg.maxOrderNotional) {
       return `order value $${orderNotional.toFixed(0)} exceeds max order size $${this.cfg.maxOrderNotional}`;

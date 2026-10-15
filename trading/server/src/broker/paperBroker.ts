@@ -6,6 +6,8 @@ import type { MarketDataFeed } from '../market/feed.js';
 import type { Account, Fill, Order, OrderRequest, Position, Quote } from '../types.js';
 import type { Broker } from './broker.js';
 import { BrokerError } from './broker.js';
+import { orderCommission, regulatoryFees } from './fees.js';
+import { MARGIN_MIN_EQUITY, PDT_MIN_EQUITY, requirement, requirementRates, type RequirementRates } from './margin.js';
 import type { StateStore } from './stateStore.js';
 
 // Local execution simulator. Aims to be pessimistic rather than flattering:
@@ -13,9 +15,9 @@ import type { StateStore } from './stateStore.js';
 //  - fills are capped by displayed size, so big orders fill partially over several quotes
 //  - resting limit orders need the market to trade *through* the limit (no queue priority)
 //  - stops trigger on the bid/ask, then fill like market orders
-//  - margin / cash buying power and the FINRA pattern-day-trader rule are enforced
+//  - commissions (with a per-order minimum) and SEC/FINRA sale fees are charged
+//  - margin requirements are enforced (FINRA intraday standards, or the legacy PDT rule)
 
-const PDT_EQUITY = 25_000;
 const MAX_FILLS_KEPT = 2000;
 
 interface PosState {
@@ -61,19 +63,8 @@ export class PaperBroker extends EventEmitter implements Broker {
     private readonly now: () => number = Date.now,
   ) {
     super();
-    const loaded = store?.load();
-    this.s = loaded ?? {
-      version: 1,
-      nyDate: clock.nyDate(),
-      cash: cfg.startingCash,
-      dayStartEquity: cfg.startingCash,
-      commissionsToday: 0,
-      positions: {},
-      orders: [],
-      fills: [],
-      dayTrades: [],
-      resting: [],
-    };
+    this.s = store?.load() ?? this.freshState();
+    for (const f of this.s.fills) f.fees ??= 0; // state saved before regulatory fees existed
     for (const o of this.s.orders) this.orders.set(o.id, o);
     for (const id of this.s.resting) this.resting.add(id);
   }
@@ -174,7 +165,31 @@ export class PaperBroker extends EventEmitter implements Broker {
     for (const symbol of Object.keys(this.s.positions)) await this.closePosition(symbol);
   }
 
+  /** Paper only: wipe positions, orders and history and start again with the configured cash. */
+  async reset(): Promise<void> {
+    this.orders.clear();
+    this.resting.clear();
+    this.s = this.freshState();
+    this.persist(true);
+    this.emit('account');
+  }
+
   // ---------------------------------------------------------------- internals
+
+  private freshState(): PaperState {
+    return {
+      version: 1,
+      nyDate: this.clock.nyDate(),
+      cash: this.cfg.startingCash,
+      dayStartEquity: this.cfg.startingCash,
+      commissionsToday: 0,
+      positions: {},
+      orders: [],
+      fills: [],
+      dayTrades: [],
+      resting: [],
+    };
+  }
 
   private newOrder(req: OrderRequest): Order {
     const ts = this.now();
@@ -230,13 +245,17 @@ export class PaperBroker extends EventEmitter implements Broker {
     const openingQty = openingPart(pos, signed);
     const closingQty = o.qty - openingQty;
 
-    if (this.cfg.accountType === 'cash' && o.side === 'sell' && openingQty > 0) return 'short selling is not allowed in a cash account';
-
     if (openingQty > 0) {
-      const acct = this.account();
-      const needed = openingQty * ref + this.reservedBuyingPower();
-      if (needed > acct.buyingPower + 1e-6) {
-        return `insufficient buying power: need $${needed.toFixed(2)}, have $${acct.buyingPower.toFixed(2)}`;
+      const { equity, excess, rates } = this.marginState();
+      if (o.side === 'sell' && rates.short === null) {
+        return this.cfg.accountType === 'cash'
+          ? 'short selling is not allowed in a cash account'
+          : `short selling needs at least $${MARGIN_MIN_EQUITY.toLocaleString()} of equity (have $${equity.toFixed(2)})`;
+      }
+      const rate = o.side === 'buy' ? rates.long : rates.short!;
+      const needed = openingQty * ref * rate + this.reservedRequirement(rates);
+      if (needed > excess + 1e-6) {
+        return `insufficient buying power: order needs $${(openingQty * ref).toFixed(2)}, available $${(Math.max(0, excess - this.reservedRequirement(rates)) / rate).toFixed(2)}`;
       }
     }
 
@@ -247,7 +266,6 @@ export class PaperBroker extends EventEmitter implements Broker {
   }
 
   private validateBracket(o: Order, req: OrderRequest, ref: number): string | null {
-    if (o.type === 'stop' || o.type === 'stop_limit') return 'bracket entry must be a market or limit order';
     const tp = req.takeProfit?.limitPrice;
     const sl = req.stopLoss?.stopPrice;
     if (req.takeProfit && !validPrice(tp)) return 'takeProfit.limitPrice must be a valid price';
@@ -262,8 +280,8 @@ export class PaperBroker extends EventEmitter implements Broker {
     return null;
   }
 
-  /** Buying power already committed to other working opening orders on the account. */
-  private reservedBuyingPower(): number {
+  /** Margin requirement already committed to other working opening orders on the account. */
+  private reservedRequirement(rates: RequirementRates): number {
     let total = 0;
     for (const o of this.orders.values()) {
       if (!WORKING.has(o.status) || o.parentId) continue;
@@ -272,7 +290,7 @@ export class PaperBroker extends EventEmitter implements Broker {
       const pos = this.s.positions[o.symbol]?.qty ?? 0;
       const remaining = o.qty - o.filledQty;
       const opening = openingPart(pos, o.side === 'buy' ? remaining : -remaining);
-      total += opening * this.referencePrice(o, q);
+      total += opening * this.referencePrice(o, q) * (o.side === 'buy' ? rates.long : (rates.short ?? 1));
     }
     return total;
   }
@@ -282,11 +300,11 @@ export class PaperBroker extends EventEmitter implements Broker {
   }
 
   private wouldBreachPdt(symbol: string): boolean {
-    if (this.cfg.accountType !== 'margin') return false;
+    if (this.cfg.accountType !== 'margin' || this.cfg.marginModel !== 'pdt') return false;
     const p = this.s.positions[symbol];
     if (!p?.openedToday) return false;
     const acct = this.account();
-    return acct.equity < PDT_EQUITY && acct.dayTradeCount >= 3;
+    return acct.equity < PDT_MIN_EQUITY && acct.dayTradeCount >= 3;
   }
 
   private attachBracket(entry: Order, req: OrderRequest): void {
@@ -393,7 +411,13 @@ export class PaperBroker extends EventEmitter implements Broker {
 
   private applyFill(o: Order, qty: number, price: number): void {
     const ts = this.now();
-    const commission = this.commission(qty);
+    // The order-level commission (with its minimum) is charged incrementally as fills arrive.
+    const filledAfter = o.filledQty + qty;
+    const notionalAfter = o.avgFillPrice * o.filledQty + price * qty;
+    const commissionTotal = orderCommission(filledAfter, notionalAfter, this.cfg.fees);
+    const commission = round2(commissionTotal - (o.commission ?? 0));
+    const fees = regulatoryFees(o.side, qty, qty * price, this.cfg.fees);
+    const cost = commission + fees;
     const p = (this.s.positions[o.symbol] ??= { qty: 0, avgPrice: 0, realizedToday: 0, openedToday: false });
     const delta = o.side === 'buy' ? qty : -qty;
 
@@ -416,15 +440,16 @@ export class PaperBroker extends EventEmitter implements Broker {
         p.openedToday = true;
       }
     }
-    p.realizedToday -= commission;
-    this.s.cash += -delta * price - commission;
-    this.s.commissionsToday += commission;
+    p.realizedToday -= cost;
+    this.s.cash += -delta * price - cost;
+    this.s.commissionsToday += cost;
 
-    o.avgFillPrice = (o.avgFillPrice * o.filledQty + price * qty) / (o.filledQty + qty);
-    o.filledQty += qty;
+    o.avgFillPrice = notionalAfter / filledAfter;
+    o.filledQty = filledAfter;
+    o.commission = commissionTotal;
     o.status = o.filledQty >= o.qty ? 'filled' : 'partially_filled';
 
-    const fill: Fill = { id: randomUUID(), orderId: o.id, symbol: o.symbol, side: o.side, qty, price, commission, ts };
+    const fill: Fill = { id: randomUUID(), orderId: o.id, symbol: o.symbol, side: o.side, qty, price, commission, fees, ts };
     this.s.fills.push(fill);
     if (this.s.fills.length > MAX_FILLS_KEPT) this.s.fills.splice(0, this.s.fills.length - MAX_FILLS_KEPT);
     this.emit('fill', fill);
@@ -453,18 +478,12 @@ export class PaperBroker extends EventEmitter implements Broker {
     this.emit('account');
   }
 
-  private commission(qty: number): number {
-    const raw = qty * this.cfg.commissionPerShare;
-    if (raw === 0 && this.cfg.minCommission === 0) return 0;
-    return round2(Math.max(raw, this.cfg.minCommission));
-  }
-
   private markPrice(symbol: string, fallback: number): number {
     const q = this.feed.getQuote(symbol);
     return q?.last || (q ? (q.bid + q.ask) / 2 : fallback);
   }
 
-  private account(): Account {
+  private marginState() {
     let longMv = 0;
     let shortMv = 0;
     let realized = 0;
@@ -476,25 +495,32 @@ export class PaperBroker extends EventEmitter implements Broker {
       else shortMv += mv;
     }
     const equity = this.s.cash + longMv + shortMv;
-    const gross = longMv - shortMv;
+    const rates = requirementRates(this.cfg.accountType, this.cfg.marginModel, equity);
+    const maintenance = requirement(longMv, -shortMv, rates);
+    return { longMv, shortMv, realized, equity, rates, maintenance, excess: equity - maintenance };
+  }
+
+  private account(): Account {
+    const { longMv, shortMv, realized, equity, rates, maintenance, excess } = this.marginState();
     const margin = this.cfg.accountType === 'margin';
-    const multiplier = equity >= PDT_EQUITY ? 4 : 2;
-    const buyingPower = margin ? Math.max(0, equity * multiplier - gross) : Math.max(0, this.s.cash);
     const dayTradeCount = this.dayTradeCount();
     return {
       mode: 'paper',
       accountType: this.cfg.accountType,
+      marginModel: this.cfg.marginModel,
       cash: round2(this.s.cash),
       equity: round2(equity),
       longMarketValue: round2(longMv),
       shortMarketValue: round2(shortMv),
-      buyingPower: round2(buyingPower),
+      buyingPower: round2(Math.max(0, excess) / rates.long),
+      maintenanceRequirement: round2(maintenance),
+      marginCall: margin && excess < -0.005,
       dayStartEquity: round2(this.s.dayStartEquity),
       dayPnl: round2(equity - this.s.dayStartEquity),
       realizedPnlToday: round2(realized),
       commissionsToday: round2(this.s.commissionsToday),
       dayTradeCount,
-      patternDayTrader: margin && dayTradeCount >= 4,
+      patternDayTrader: margin && this.cfg.marginModel === 'pdt' && dayTradeCount >= 4,
       tradingBlocked: false,
     };
   }

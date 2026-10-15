@@ -1,5 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import type { FeeSchedule } from './broker/fees.js';
+import type { MarginModel } from './broker/margin.js';
 
 // Minimal .env loader so the project has no runtime dependency for it.
 function loadDotEnv(): void {
@@ -32,15 +34,17 @@ const num = (key: string, fallback: number) => {
 export interface PaperConfig {
   startingCash: number;
   accountType: 'cash' | 'margin';
+  marginModel: MarginModel;
   slippageBps: number;
-  commissionPerShare: number;
-  minCommission: number;
+  fees: FeeSchedule;
   /** Fraction of displayed size we assume we can take per quote update. */
   liquidityFraction: number;
 }
 
 export interface RiskConfig {
   maxDailyLoss: number;
+  /** Max loss to the stop for a single new position; 0 disables (and stops being mandatory). */
+  maxRiskPerTrade: number;
   maxPositionNotional: number;
   maxOrderNotional: number;
   flattenMinutesBeforeClose: number;
@@ -61,17 +65,26 @@ export const config = {
   },
   dataDir: str('DATA_DIR', resolve(process.cwd(), 'data')),
   paper: {
-    startingCash: num('STARTING_CASH', 30000),
+    startingCash: num('STARTING_CASH', 5000),
     accountType: str('ACCOUNT_TYPE', 'margin') as 'cash' | 'margin',
+    marginModel: str('MARGIN_MODEL', 'intraday') as MarginModel,
     slippageBps: num('SLIPPAGE_BPS', 2),
-    commissionPerShare: num('COMMISSION_PER_SHARE', 0),
-    minCommission: num('MIN_COMMISSION', 0),
+    // IBKR Pro Fixed + pass-through regulatory fees (rates current as of 2026-10).
+    fees: {
+      commissionPerShare: num('COMMISSION_PER_SHARE', 0.005),
+      minCommission: num('MIN_COMMISSION', 1),
+      maxCommissionPct: num('MAX_COMMISSION_PCT', 0.01),
+      secFeePerMillion: num('SEC_FEE_PER_MILLION', 20.6),
+      tafPerShare: num('FINRA_TAF_PER_SHARE', 0.000195),
+      tafMaxPerTrade: num('FINRA_TAF_MAX', 9.79),
+    },
     liquidityFraction: num('LIQUIDITY_FRACTION', 1),
   } satisfies PaperConfig,
   risk: {
-    maxDailyLoss: num('MAX_DAILY_LOSS', 500),
-    maxPositionNotional: num('MAX_POSITION_NOTIONAL', 20000),
-    maxOrderNotional: num('MAX_ORDER_NOTIONAL', 15000),
+    maxDailyLoss: num('MAX_DAILY_LOSS', 150),
+    maxRiskPerTrade: num('MAX_RISK_PER_TRADE', 50),
+    maxPositionNotional: num('MAX_POSITION_NOTIONAL', 10000),
+    maxOrderNotional: num('MAX_ORDER_NOTIONAL', 10000),
     flattenMinutesBeforeClose: num('FLATTEN_MINUTES_BEFORE_CLOSE', 5),
   } satisfies RiskConfig,
 };

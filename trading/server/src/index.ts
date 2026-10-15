@@ -24,7 +24,7 @@ const broker = new PaperBroker(feed, clock, config.paper, store);
 const svc = new TradingService(feed, broker, clock, config.risk);
 await svc.start();
 
-const server = createApiServer(svc);
+const server = createApiServer(svc, { fees: config.paper.fees, risk: config.risk });
 server.listen(config.port, () => {
   console.log(`DayTrader API on http://localhost:${config.port}  (data: ${feed.name}, broker: ${broker.name})`);
 });

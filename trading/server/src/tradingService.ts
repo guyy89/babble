@@ -56,6 +56,10 @@ export class TradingService extends EventEmitter {
       acct.tradingBlocked = true;
       acct.blockReason = `Daily loss limit ($${this.riskCfg.maxDailyLoss}) reached — closing orders only`;
     }
+    if (acct.marginCall) {
+      acct.tradingBlocked = true;
+      acct.blockReason = `Margin deficit: equity $${acct.equity.toFixed(2)} is below the $${acct.maintenanceRequirement.toFixed(2)} requirement — reduce positions`;
+    }
     return acct;
   }
 

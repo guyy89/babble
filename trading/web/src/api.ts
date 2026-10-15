@@ -21,4 +21,5 @@ export const api = {
   cancelAll: () => call<void>('DELETE', '/orders'),
   close: (symbol: string) => call<Order | null>('DELETE', `/positions/${symbol}`),
   flattenAll: () => call<void>('DELETE', '/positions'),
+  resetAccount: () => call<unknown>('POST', '/account/reset'),
 };

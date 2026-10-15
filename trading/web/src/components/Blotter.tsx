@@ -53,16 +53,16 @@ export function Blotter({ positions, orders, fills, onSelect }: Props) {
         )}
         {tab === 'fills' && (
           <table>
-            <thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Price</th><th>Commission</th></tr></thead>
+            <thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Price</th><th>Commission</th><th>SEC/FINRA</th></tr></thead>
             <tbody>
               {fills.map((f) => (
                 <tr key={f.id} onClick={() => onSelect(f.symbol)}>
                   <td>{time(f.ts)}</td><td><b>{f.symbol}</b></td>
                   <td className={f.side === 'buy' ? 'up' : 'down'}>{f.side.toUpperCase()}</td>
-                  <td>{f.qty}</td><td>{price(f.price)}</td><td>{money(f.commission)}</td>
+                  <td>{f.qty}</td><td>{price(f.price)}</td><td>{money(f.commission)}</td><td>{f.fees ? money(f.fees) : '—'}</td>
                 </tr>
               ))}
-              {fills.length === 0 && <tr><td colSpan={6} className="muted">No fills yet</td></tr>}
+              {fills.length === 0 && <tr><td colSpan={7} className="muted">No fills yet</td></tr>}
             </tbody>
           </table>
         )}

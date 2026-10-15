@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { roundTripCost } from '../../../server/src/broker/fees';
 import { api, type OrderRequest } from '../api';
 import { money, price } from '../format';
-import type { Account, Position, Quote } from '../store';
+import type { Account, Position, PublicSettings, Quote } from '../store';
 
 type OrderType = OrderRequest['type'];
 
@@ -10,13 +11,17 @@ interface Props {
   quote?: Quote;
   position?: Position;
   account?: Account;
+  settings?: PublicSettings;
   pickedPrice?: { value: number; seq: number };
 }
 
 const parse = (s: string) => (s.trim() === '' ? undefined : Number(s));
 const r2 = (n: number) => (Math.round(n * 100) / 100).toFixed(2);
 
-export function OrderTicket({ symbol, quote, position, account, pickedPrice }: Props) {
+export function OrderTicket({ symbol, quote, position, account, settings, pickedPrice }: Props) {
+  const maxRisk = settings?.risk.maxRiskPerTrade ?? 0;
+  const stopRequired = maxRisk > 0;
+
   const [qty, setQty] = useState('100');
   const [type, setType] = useState<OrderType>('limit');
   const [limit, setLimit] = useState('');
@@ -25,9 +30,14 @@ export function OrderTicket({ symbol, quote, position, account, pickedPrice }: P
   const [bracket, setBracket] = useState(true);
   const [tp, setTp] = useState('');
   const [sl, setSl] = useState('');
-  const [riskUsd, setRiskUsd] = useState('100');
+  const [riskUsd, setRiskUsd] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string }>();
+
+  // Default the sizing input to the account's risk-per-trade limit once settings arrive.
+  useEffect(() => {
+    if (maxRisk > 0) setRiskUsd((v) => v || String(maxRisk));
+  }, [maxRisk]);
 
   // Reset prices when switching symbols so we never submit another symbol's levels.
   useEffect(() => {
@@ -45,29 +55,53 @@ export function OrderTicket({ symbol, quote, position, account, pickedPrice }: P
   const mid = quote ? (quote.bid + quote.ask) / 2 : undefined;
   const needsLimit = type === 'limit' || type === 'stop_limit';
   const needsStop = type === 'stop' || type === 'stop_limit';
-  const canBracket = type === 'market' || type === 'limit';
+  const useBracket = bracket || stopRequired;
 
-  const entryFor = (side: 'buy' | 'sell') =>
-    parse(needsLimit ? limit : '') ?? parse(needsStop ? stop : '') ?? (side === 'buy' ? quote?.ask : quote?.bid);
-
-  const entry = entryFor('buy') ?? mid;
-  const q = Number(qty) || 0;
   const slN = parse(sl);
   const tpN = parse(tp);
-  const riskPerShare = entry !== undefined && slN !== undefined ? Math.abs(entry - slN) : undefined;
-  const rewardPerShare = entry !== undefined && tpN !== undefined ? Math.abs(tpN - entry) : undefined;
+  // Direction follows the stop-loss when one is set (stop below entry = long), otherwise assume long.
+  const explicitEntry = parse(needsLimit ? limit : '') ?? parse(needsStop ? stop : '');
+  const longGuess = slN === undefined || mid === undefined || slN < (explicitEntry ?? mid);
+  const entry = explicitEntry ?? (longGuess ? quote?.ask : quote?.bid) ?? mid;
+
+  const q = Number(qty) || 0;
+  const fees = settings?.fees && entry ? roundTripCost(q, entry, settings.fees) : 0;
+  const riskPerShare = useBracket && entry !== undefined && slN !== undefined ? Math.abs(entry - slN) : undefined;
+  const rewardPerShare = useBracket && entry !== undefined && tpN !== undefined ? Math.abs(tpN - entry) : undefined;
+  const priceRisk = riskPerShare !== undefined ? riskPerShare * q : undefined;
+  const totalRisk = priceRisk !== undefined ? priceRisk + fees : undefined;
+  const netReward = rewardPerShare !== undefined ? rewardPerShare * q - fees : undefined;
+  const overLimit = stopRequired && priceRisk !== undefined && priceRisk > maxRisk + 1e-6;
 
   const sizeFromRisk = () => {
-    if (!riskPerShare) return;
-    const n = Math.floor(Number(riskUsd) / riskPerShare);
+    if (!riskPerShare || !entry) return;
+    let budget = Number(riskUsd);
+    if (stopRequired) budget = Math.min(budget, maxRisk);
+    // Largest size whose loss to the stop, plus round-trip fees, stays inside the budget.
+    let n = Math.floor(budget / riskPerShare);
+    while (n > 0 && n * riskPerShare + (settings?.fees ? roundTripCost(n, entry, settings.fees) : 0) > budget) n--;
+    // ...and never more than the order/position caps or buying power allow.
+    const r = settings?.risk;
+    const held = Math.abs(position?.qty ?? 0) * entry;
+    const caps: [number, string][] = [
+      [r?.maxOrderNotional || Infinity, 'max order size'],
+      [r?.maxPositionNotional ? r.maxPositionNotional - held : Infinity, 'max position size'],
+      [account?.buyingPower ?? Infinity, 'buying power'],
+    ];
+    let capped: string | undefined;
+    for (const [value, label] of caps) {
+      const maxShares = Math.floor(Math.max(0, value) / entry);
+      if (maxShares < n) { n = maxShares; capped = label; }
+    }
     if (n > 0) setQty(String(n));
+    setResult(capped ? { ok: true, text: `Size limited to ${n} shares by ${capped}` } : undefined);
   };
 
   const submit = async (side: 'buy' | 'sell') => {
     const req: OrderRequest = { symbol, side, qty: Math.floor(q), type, tif };
     if (needsLimit) req.limitPrice = parse(limit);
     if (needsStop) req.stopPrice = parse(stop);
-    if (bracket && canBracket) {
+    if (useBracket) {
       if (tpN !== undefined) req.takeProfit = { limitPrice: tpN };
       if (slN !== undefined) req.stopLoss = { stopPrice: slN };
     }
@@ -84,10 +118,11 @@ export function OrderTicket({ symbol, quote, position, account, pickedPrice }: P
     }
   };
 
-  // Quick fill buttons for bracket levels, sized in cents from the entry.
-  const offset = (field: 'tp' | 'sl', cents: number) => {
+  // Quick-set bracket levels a number of cents from the entry. Long: TP above, SL below; short: mirrored.
+  const offset = (field: 'tp' | 'sl', cents: number, long: boolean) => {
     if (entry === undefined) return;
-    (field === 'tp' ? setTp : setSl)(r2(entry + cents / 100));
+    const dir = (field === 'tp' ? 1 : -1) * (long ? 1 : -1);
+    (field === 'tp' ? setTp : setSl)(r2(entry + (dir * cents) / 100));
   };
 
   return (
@@ -127,44 +162,45 @@ export function OrderTicket({ symbol, quote, position, account, pickedPrice }: P
         </select>
       </label>
 
-      {canBracket && (
-        <>
-          <label className="check">
-            <input type="checkbox" checked={bracket} onChange={(e) => setBracket(e.target.checked)} /> Bracket (take-profit / stop-loss)
+      <label className="check">
+        <input type="checkbox" checked={useBracket} disabled={stopRequired} onChange={(e) => setBracket(e.target.checked)} />
+        Bracket (TP / SL){stopRequired && <span className="muted small"> — stop required</span>}
+      </label>
+      {useBracket && (
+        <div className="bracket">
+          <label>Take profit
+            <input type="number" step={0.01} value={tp} onChange={(e) => setTp(e.target.value)} />
           </label>
-          {bracket && (
-            <div className="bracket">
-              <label>Take profit
-                <input type="number" step={0.01} value={tp} onChange={(e) => setTp(e.target.value)} />
-              </label>
-              <div className="chips">
-                {[10, 25, 50, 100].map((c) => <button key={c} onClick={() => offset('tp', c)}>+{c}¢</button>)}
-              </div>
-              <label>Stop loss
-                <input type="number" step={0.01} value={sl} onChange={(e) => setSl(e.target.value)} />
-              </label>
-              <div className="chips">
-                {[10, 25, 50, 100].map((c) => <button key={c} onClick={() => offset('sl', -c)}>−{c}¢</button>)}
-              </div>
-              <div className="muted small">Long-side offsets shown; for a short, swap the levels.</div>
-              <div className="risk-row">
-                <label>Risk $
-                  <input type="number" value={riskUsd} onChange={(e) => setRiskUsd(e.target.value)} />
-                </label>
-                <button onClick={sizeFromRisk} disabled={!riskPerShare}>Size</button>
-              </div>
-            </div>
-          )}
-        </>
+          <div className="chips">
+            {[10, 25, 50, 100].map((c) => <button key={c} title="long" onClick={() => offset('tp', c, true)}>+{c}¢</button>)}
+          </div>
+          <label>Stop loss
+            <input type="number" step={0.01} value={sl} onChange={(e) => setSl(e.target.value)} />
+          </label>
+          <div className="chips">
+            {[10, 25, 50, 100].map((c) => <button key={c} title="long" onClick={() => offset('sl', c, true)}>−{c}¢</button>)}
+          </div>
+          <div className="chips">
+            <button onClick={() => { offset('tp', 50, false); offset('sl', 25, false); }}>Short: TP −50¢ / SL +25¢</button>
+          </div>
+          <div className="risk-row">
+            <label>Risk ${stopRequired ? ` (max ${maxRisk})` : ''}
+              <input type="number" value={riskUsd} onChange={(e) => setRiskUsd(e.target.value)} />
+            </label>
+            <button onClick={sizeFromRisk} disabled={!riskPerShare}>Size</button>
+          </div>
+        </div>
       )}
 
       <dl className="stats">
         <dt>Est. value</dt><dd>{entry ? money(q * entry) : '—'}</dd>
+        <dt>Fees (round trip)</dt><dd>{settings?.fees ? money(fees) : '—'}</dd>
         <dt>Buying power</dt><dd>{money(account?.buyingPower)}</dd>
-        {bracket && canBracket && riskPerShare !== undefined && <><dt>Risk</dt><dd className="down">{money(riskPerShare * q)}</dd></>}
-        {bracket && canBracket && rewardPerShare !== undefined && <><dt>Reward</dt><dd className="up">{money(rewardPerShare * q)}</dd></>}
-        {riskPerShare && rewardPerShare ? <><dt>R:R</dt><dd>1 : {(rewardPerShare / riskPerShare).toFixed(2)}</dd></> : null}
+        {totalRisk !== undefined && <><dt>Risk incl. fees</dt><dd className="down">{money(totalRisk)}</dd></>}
+        {netReward !== undefined && <><dt>Reward after fees</dt><dd className="up">{money(netReward)}</dd></>}
+        {totalRisk && netReward !== undefined ? <><dt>R:R (net)</dt><dd>1 : {(netReward / totalRisk).toFixed(2)}</dd></> : null}
       </dl>
+      {overLimit && <div className="result err">Risk to stop {money(priceRisk)} is over the {money(maxRisk)} limit — press Size.</div>}
 
       <div className="actions">
         <button className="buy" disabled={busy || q <= 0} onClick={() => submit('buy')}>Buy</button>

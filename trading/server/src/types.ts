@@ -67,6 +67,8 @@ export interface Order {
   status: OrderStatus;
   filledQty: number;
   avgFillPrice: number;
+  /** Broker commission charged so far (the per-order minimum is applied once per order). */
+  commission?: number;
   createdAt: number;
   updatedAt: number;
   rejectReason?: string;
@@ -88,6 +90,8 @@ export interface Fill {
   qty: number;
   price: number;
   commission: number;
+  /** Regulatory transaction fees (SEC Section 31 + FINRA TAF), charged on sales only. */
+  fees: number;
   ts: number;
 }
 
@@ -104,16 +108,23 @@ export interface Position {
 export interface Account {
   mode: string;
   accountType: 'cash' | 'margin';
+  marginModel: 'intraday' | 'pdt';
   cash: number;
   equity: number;
   longMarketValue: number;
   shortMarketValue: number;
   buyingPower: number;
+  /** Equity the current positions require to be held. */
+  maintenanceRequirement: number;
+  /** Equity below the maintenance requirement: only reducing orders are accepted. */
+  marginCall: boolean;
   dayStartEquity: number;
   dayPnl: number;
   realizedPnlToday: number;
+  /** Commissions plus regulatory fees paid today. */
   commissionsToday: number;
   dayTradeCount: number; // rolling 5 business days
+  /** Only meaningful under the legacy 'pdt' margin model. */
   patternDayTrader: boolean;
   tradingBlocked: boolean;
   blockReason?: string;
