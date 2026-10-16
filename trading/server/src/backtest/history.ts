@@ -83,6 +83,11 @@ export class AlpacaHistory {
     return undefined;
   }
 
+  /** 1-minute bars for many symbols over a time window, uncached (the research dataset stores its own). */
+  minutesRange(symbols: string[], start: string, end: string) {
+    return this.bars(symbols, '1Min', start, end);
+  }
+
   /** 1-minute bars for a few symbols on one New York date (pre- and post-market included). */
   async minutes(symbols: string[], date: string) {
     const key = [...symbols].sort().join('_');

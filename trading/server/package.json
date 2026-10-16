@@ -8,7 +8,9 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "backtest": "tsx src/backtest/run.ts",
-    "replay": "tsx src/backtest/replay.ts"
+    "replay": "tsx src/backtest/replay.ts",
+    "research:prepare": "tsx src/research/prepare.ts",
+    "research": "tsx src/research/run.ts"
   },
   "dependencies": {
     "express": "^5.1.0",
