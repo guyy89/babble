@@ -223,3 +223,12 @@ button.ghost:hover:not(:disabled) { color: var(--down); background: #2c1214; }
 .dialog { background: var(--panel); border: 1px solid #2f3b48; border-radius: 8px; padding: 14px; width: min(520px, calc(100vw - 32px)); }
 .dialog td { text-align: start; }
 kbd { display: inline-block; min-width: 28px; padding: 2px 6px; border: 1px solid #2f3b48; border-bottom-width: 2px; border-radius: 4px; background: #0b1016; font-family: inherit; text-align: center; direction: ltr; }
+
+/* Strategy robot */
+.bot { display: flex; flex-direction: column; gap: 6px; padding: 6px; }
+.bot-head { display: flex; gap: 12px; align-items: center; }
+.bot-head button { padding: 8px 16px; font-weight: 700; }
+.bot-head .buy-btn { background: var(--up); color: #04120f; border: none; }
+.bot-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 10px; align-items: start; }
+.bot-log { max-height: 220px; overflow-y: auto; font-size: 12px; display: flex; flex-direction: column; gap: 3px; padding: 4px 8px; }
+.tabs button.bot-on { color: var(--up); border-color: #134a44; }

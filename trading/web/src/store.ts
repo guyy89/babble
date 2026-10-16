@@ -1,5 +1,6 @@
 import { useEffect, useReducer } from 'react';
 import type { PublicSettings } from '../../server/src/api/server';
+import type { BotStatus } from '../../server/src/bot/orbBot';
 import type { Account, Bar, Fill, Order, Position, Quote, Trade } from '../../server/src/types';
 
 export type { Account, Bar, Fill, Order, Position, PublicSettings, Quote, Trade };
@@ -32,6 +33,7 @@ export interface State {
   orders: Record<string, Order>;
   fills: Fill[];
   notices: Notice[];
+  bot?: BotStatus;
 }
 
 type Action =
@@ -45,6 +47,7 @@ type Action =
   | { type: 'clock'; data: Clock }
   | { type: 'notice'; data: Notice }
   | { type: 'symbols'; data: WatchItem[] }
+  | { type: 'bot'; data: BotStatus }
   | { type: 'dismiss'; ts: number };
 
 const initial: State = {
@@ -79,6 +82,7 @@ function reducer(s: State, a: Action): State {
         positions: d.positions,
         orders: Object.fromEntries((d.orders as Order[]).map((o) => [o.id, o])),
         fills: d.fills,
+        bot: d.bot,
       };
     }
     case 'quote':
@@ -93,6 +97,8 @@ function reducer(s: State, a: Action): State {
       return { ...s, positions: a.data };
     case 'clock':
       return { ...s, clock: a.data };
+    case 'bot':
+      return { ...s, bot: a.data };
     case 'symbols':
       return { ...s, ...watch(a.data) };
     case 'notice':

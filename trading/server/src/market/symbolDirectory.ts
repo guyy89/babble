@@ -24,6 +24,10 @@ export class SymbolDirectory {
     }
   }
 
+  all(): SymbolInfo[] {
+    return this.list;
+  }
+
   get(symbol: string): SymbolInfo | undefined {
     return this.bySymbol.get(symbol.toUpperCase());
   }

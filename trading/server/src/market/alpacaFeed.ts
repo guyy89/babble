@@ -162,7 +162,7 @@ export class AlpacaFeed extends BaseFeed {
 }
 
 interface AQuote { bp: number; ap: number; bs: number; as: number; t: string }
-type ABar = { o: number; h: number; l: number; c: number; v: number };
+type ABar = { t?: string; o: number; h: number; l: number; c: number; v: number };
 export interface Snapshot { latestTrade?: { p: number }; dailyBar?: ABar; prevDailyBar?: ABar }
 type AlpacaMsg =
   | { T: 'success'; msg: string }

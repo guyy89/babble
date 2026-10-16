@@ -3,6 +3,8 @@ import { api } from '../api';
 import { money, pnlClass, price, signed, time } from '../format';
 import { orderKind, SIDE, STATUS } from '../he';
 import type { Fill, Order, Position, Quote } from '../store';
+import type { BotStatus } from '../api';
+import { BotPanel } from './BotPanel';
 import { Journal } from './Journal';
 import { News } from './News';
 import { Tape } from './Tape';
@@ -14,13 +16,14 @@ interface Props {
   onSelect: (symbol: string) => void;
   symbol?: string;
   quote?: Quote;
+  bot?: BotStatus;
 }
 
-type Tab = 'positions' | 'open' | 'orders' | 'fills' | 'journal' | 'tape' | 'news';
+type Tab = 'positions' | 'open' | 'orders' | 'fills' | 'journal' | 'tape' | 'news' | 'bot';
 
 const OPEN = new Set(['new', 'partially_filled', 'held']);
 
-export function Blotter({ positions, orders, fills, onSelect, symbol, quote }: Props) {
+export function Blotter({ positions, orders, fills, onSelect, symbol, quote, bot }: Props) {
   const [tab, setTab] = useState<Tab>('positions');
   const open = orders.filter((o) => OPEN.has(o.status));
   const openPositions = positions.filter((p) => p.qty !== 0);
@@ -35,6 +38,9 @@ export function Blotter({ positions, orders, fills, onSelect, symbol, quote }: P
         <button className={tab === 'journal' ? 'on' : ''} onClick={() => setTab('journal')}>יומן מסחר</button>
         <button className={tab === 'tape' ? 'on' : ''} onClick={() => setTab('tape')}>סרט עסקאות</button>
         <button className={tab === 'news' ? 'on' : ''} onClick={() => setTab('news')}>חדשות</button>
+        <button className={`${tab === 'bot' ? 'on' : ''} ${bot?.enabled ? 'bot-on' : ''}`} onClick={() => setTab('bot')}>
+          רובוט{bot?.enabled ? ' (פעיל)' : ''}
+        </button>
         <span className="spacer" />
         {tab === 'open' && open.length > 0 && <button className="danger" onClick={() => api.cancelAll()}>בטל הכל</button>}
       </div>
@@ -65,6 +71,7 @@ export function Blotter({ positions, orders, fills, onSelect, symbol, quote }: P
         {tab === 'journal' && <Journal refreshKey={fills[0]?.id ?? ''} onSelect={onSelect} />}
         {tab === 'tape' && <Tape symbol={symbol} quote={quote} />}
         {tab === 'news' && <News symbol={symbol} />}
+        {tab === 'bot' && <BotPanel status={bot} onSelect={onSelect} />}
         {tab === 'fills' && (
           <table>
             <thead><tr><th>שעה</th><th>מניה</th><th>צד</th><th>כמות</th><th>מחיר</th><th>עמלה</th><th>אגרות רגולציה</th></tr></thead>

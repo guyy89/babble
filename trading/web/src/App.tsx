@@ -125,6 +125,7 @@ export function App() {
           {state.clock?.alwaysOpen ? 'שוק מדומה, פתוח תמיד' : state.clock?.isOpen ? `השוק פתוח · ${state.clock.minutesToClose} דק׳ לסגירה` : 'השוק סגור'}
         </span>
         {!state.connected && <span className="badge closed">אין חיבור לשרת</span>}
+        {state.bot?.enabled && <span className="badge open" title={state.bot.phase}>רובוט פעיל</span>}
         <div className="spacer" />
         {a && (
           <div className="acct">
@@ -168,7 +169,7 @@ export function App() {
       )}
 
       <Blotter positions={state.positions} orders={orders} fills={state.fills} onSelect={selectSymbol}
-        symbol={symbol} quote={symbol ? state.quotes[symbol] : undefined} />
+        symbol={symbol} quote={symbol ? state.quotes[symbol] : undefined} bot={state.bot} />
 
       <div className="toasts">
         {localNotice && (

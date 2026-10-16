@@ -23,7 +23,7 @@ const fmt = new Intl.DateTimeFormat('en-US', {
   hourCycle: 'h23',
 });
 
-function nyParts(now: number) {
+export function nyParts(now: number) {
   const parts = Object.fromEntries(fmt.formatToParts(new Date(now)).map((p) => [p.type, p.value]));
   return {
     date: `${parts.year}-${parts.month}-${parts.day}`,

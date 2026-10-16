@@ -6,6 +6,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { BrokerError } from '../broker/broker.js';
 import type { FeeSchedule } from '../broker/fees.js';
 import type { RiskConfig } from '../config.js';
+import type { OrbBot } from '../bot/orbBot.js';
 import { buildJournal } from '../journal.js';
 import type { Movers } from '../market/movers.js';
 import type { ScanFilter, ScanRow } from '../market/scanner.js';
@@ -35,7 +36,7 @@ export interface PublicSettings {
   risk: RiskConfig;
 }
 
-export function createApiServer(svc: TradingService, settings: PublicSettings, market: MarketServices): Server {
+export function createApiServer(svc: TradingService, settings: PublicSettings, market: MarketServices, bot: OrbBot): Server {
   const app = express();
   app.use(express.json());
 
@@ -81,6 +82,17 @@ export function createApiServer(svc: TradingService, settings: PublicSettings, m
       sort: q.sort === 'gap' || q.sort === 'volume' ? q.sort : 'change',
     };
     res.json(await upstream('תוצאות סריקה', () => market.scan(filter)));
+  });
+  app.get('/api/bot', (_req, res) => {
+    res.json(bot.status());
+  });
+  app.post('/api/bot', (req, res) => {
+    try {
+      bot.setEnabled(Boolean(req.body?.enabled));
+    } catch (err) {
+      throw new BrokerError((err as Error).message, 409);
+    }
+    res.json(bot.status());
   });
   app.get('/api/journal', async (_req, res) => {
     res.json(buildJournal(await broker.getFills(), await broker.getOrders('all')));
@@ -168,12 +180,15 @@ export function createApiServer(svc: TradingService, settings: PublicSettings, m
         positions: await broker.getPositions(),
         orders: await broker.getOrders('all'),
         fills: (await broker.getFills()).slice(0, 200),
+        bot: bot.status(),
       },
     });
 
   wss.on('connection', async (ws) => {
     ws.send(await snapshot());
   });
+
+  bot.on('status', (status) => svc.emit('event', { type: 'bot', data: status }));
 
   svc.on('event', (ev) => {
     const msg = JSON.stringify(ev);

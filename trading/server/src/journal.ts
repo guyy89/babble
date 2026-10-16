@@ -132,7 +132,7 @@ function finish<T extends JournalTrade>(t: T): JournalTrade {
   return out;
 }
 
-function stats(closed: JournalTrade[]): JournalStats {
+export function stats(closed: JournalTrade[]): JournalStats {
   const wins = closed.filter((t) => t.netPnl > 0);
   const losses = closed.filter((t) => t.netPnl <= 0);
   const sum = (xs: JournalTrade[], f: (t: JournalTrade) => number) => xs.reduce((a, t) => a + f(t), 0);
@@ -157,7 +157,7 @@ function stats(closed: JournalTrade[]): JournalStats {
   };
 }
 
-function bucket(closed: JournalTrade[], key: (t: JournalTrade) => string): Bucket[] {
+export function bucket(closed: JournalTrade[], key: (t: JournalTrade) => string): Bucket[] {
   const m = new Map<string, Bucket>();
   for (const t of closed) {
     const k = key(t);
