@@ -3,6 +3,7 @@ import { api } from './api';
 import { Blotter } from './components/Blotter';
 import { Chart, TIMEFRAMES, type Timeframe } from './components/Chart';
 import { OrderTicket } from './components/OrderTicket';
+import { Watchlist } from './components/Watchlist';
 import { money, pnlClass, price, signed } from './format';
 import { useTradingStore } from './store';
 
@@ -13,7 +14,10 @@ export function App() {
   const [timeframe, setTimeframe] = useState<Timeframe>(1);
   const [atrValue, setAtrValue] = useState<number | null>(null);
 
-  const symbol = selected ?? state.symbols[0];
+  const [localError, setLocalError] = useState<{ message: string; ts: number }>();
+
+  // A removed symbol can't stay selected.
+  const symbol = selected && state.symbols.includes(selected) ? selected : state.symbols[0];
   const orders = useMemo(() => Object.values(state.orders).sort((a, b) => b.createdAt - a.createdAt), [state.orders]);
   const symbolOrders = useMemo(
     () => orders.filter((o) => o.symbol === symbol && ['new', 'partially_filled', 'held'].includes(o.status)),
@@ -61,30 +65,12 @@ export function App() {
 
       {a?.tradingBlocked && <div className="banner">{a.blockReason}</div>}
 
-      <aside className="panel watchlist">
-        <div className="panel-title">רשימת מעקב</div>
-        <table>
-          <thead><tr><th>מניה</th><th>ביקוש</th><th>היצע</th><th>אחרון</th></tr></thead>
-          <tbody>
-            {state.symbols.map((s) => {
-              const q = state.quotes[s];
-              const pos = state.positions.find((p) => p.symbol === s && p.qty !== 0);
-              return (
-                <tr key={s} className={s === symbol ? 'sel' : ''} onClick={() => setSelected(s)}>
-                  <td><b>{s}</b>{pos && <span className={`dot ${pos.qty > 0 ? 'up' : 'down'}`}>●</span>}</td>
-                  <td>{price(q?.bid)}</td>
-                  <td>{price(q?.ask)}</td>
-                  <td>{price(q?.last)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </aside>
+      <Watchlist symbols={state.symbols} names={state.names} quotes={state.quotes} positions={state.positions}
+        selected={symbol} onSelect={setSelected} onError={(message) => setLocalError({ message, ts: Date.now() })} />
 
       <main className="panel chart-panel">
         <div className="panel-title">
-          {symbol}
+          <span>{symbol} <span className="co-title">{symbol && state.names[symbol]}</span></span>
           <span className="tf">
             {TIMEFRAMES.map((tf) => (
               <button key={tf} className={tf === timeframe ? 'sm on' : 'sm'} onClick={() => setTimeframe(tf)}>{tf} דק׳</button>
@@ -107,13 +93,16 @@ export function App() {
       </main>
 
       {symbol && (
-        <OrderTicket symbol={symbol} quote={state.quotes[symbol]} position={position} account={a}
+        <OrderTicket symbol={symbol} companyName={state.names[symbol]} quote={state.quotes[symbol]} position={position} account={a}
           settings={state.settings} pickedPrice={picked} />
       )}
 
       <Blotter positions={state.positions} orders={orders} fills={state.fills} onSelect={setSelected} />
 
       <div className="toasts">
+        {localError && (
+          <div className="toast warn" onClick={() => setLocalError(undefined)}>{localError.message}</div>
+        )}
         {state.notices.map((n) => (
           <div key={n.ts} className={`toast ${n.level}`} onClick={() => dismiss(n.ts)}>{n.message}</div>
         ))}

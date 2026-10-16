@@ -30,6 +30,7 @@ const cfg: PaperConfig = {
   slippageBps: 0,
   fees: noFees,
   liquidityFraction: 1,
+  maxQuoteDeviationBps: 0,
 };
 
 let feed: FakeFeed;

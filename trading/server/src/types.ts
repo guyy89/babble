@@ -131,6 +131,6 @@ export interface Account {
 }
 
 export interface ServerEvent {
-  type: 'quote' | 'bar' | 'order' | 'fill' | 'account' | 'positions' | 'clock' | 'notice';
+  type: 'quote' | 'bar' | 'order' | 'fill' | 'account' | 'positions' | 'clock' | 'notice' | 'symbols';
   data: unknown;
 }

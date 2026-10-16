@@ -9,6 +9,7 @@ type OrderType = OrderRequest['type'];
 
 interface Props {
   symbol: string;
+  companyName?: string;
   quote?: Quote;
   position?: Position;
   account?: Account;
@@ -19,7 +20,7 @@ interface Props {
 const parse = (s: string) => (s.trim() === '' ? undefined : Number(s));
 const r2 = (n: number) => (Math.round(n * 100) / 100).toFixed(2);
 
-export function OrderTicket({ symbol, quote, position, account, settings, pickedPrice }: Props) {
+export function OrderTicket({ symbol, companyName, quote, position, account, settings, pickedPrice }: Props) {
   const maxRisk = settings?.risk.maxRiskPerTrade ?? 0;
   const stopRequired = maxRisk > 0;
 
@@ -128,7 +129,7 @@ export function OrderTicket({ symbol, quote, position, account, settings, picked
 
   return (
     <div className="panel ticket">
-      <div className="panel-title">פקודה: {symbol}</div>
+      <div className="panel-title">פקודה: {symbol} <span className="co-title">{companyName}</span></div>
       <div className="quote-strip">
         <span>ביקוש <b className="down">{price(quote?.bid)}</b> × {quote?.bidSize ?? '—'}</span>
         <span>היצע <b className="up">{price(quote?.ask)}</b> × {quote?.askSize ?? '—'}</span>

@@ -6,6 +6,9 @@ export interface MarketDataFeed extends EventEmitter {
   start(): Promise<void>;
   stop(): void;
   symbols(): string[];
+  /** Start streaming a symbol (loads its history first). No-op if already subscribed. */
+  addSymbol(symbol: string): Promise<void>;
+  removeSymbol(symbol: string): void;
   getQuote(symbol: string): Quote | undefined;
   getBars(symbol: string): Bar[];
   // Events: 'quote' (Quote), 'trade' (Trade), 'bar' (Bar — emitted on every update of the current bar)
@@ -20,9 +23,12 @@ export abstract class BaseFeed extends EventEmitter implements MarketDataFeed {
   protected quotes = new Map<string, Quote>();
   protected bars = new Map<string, Bar[]>();
 
-  constructor(protected readonly symbolList: string[]) {
+  protected symbolList: string[];
+
+  constructor(symbols: string[]) {
     super();
-    for (const s of symbolList) this.bars.set(s, []);
+    this.symbolList = [...new Set(symbols)];
+    for (const s of this.symbolList) this.bars.set(s, []);
   }
 
   abstract start(): Promise<void>;
@@ -31,6 +37,30 @@ export abstract class BaseFeed extends EventEmitter implements MarketDataFeed {
   symbols(): string[] {
     return [...this.symbolList];
   }
+
+  async addSymbol(symbol: string): Promise<void> {
+    if (this.symbolList.includes(symbol)) return;
+    this.symbolList.push(symbol);
+    this.bars.set(symbol, []);
+    try {
+      await this.onAdd(symbol);
+    } catch (err) {
+      this.removeSymbol(symbol);
+      throw err;
+    }
+  }
+
+  removeSymbol(symbol: string): void {
+    if (!this.symbolList.includes(symbol)) return;
+    this.symbolList = this.symbolList.filter((s) => s !== symbol);
+    this.bars.delete(symbol);
+    this.quotes.delete(symbol);
+    this.onRemove(symbol);
+  }
+
+  /** Feed-specific subscribe/unsubscribe hooks for symbols added after start(). */
+  protected async onAdd(_symbol: string): Promise<void> {}
+  protected onRemove(_symbol: string): void {}
 
   getQuote(symbol: string): Quote | undefined {
     return this.quotes.get(symbol);

@@ -6,6 +6,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { BrokerError } from '../broker/broker.js';
 import type { FeeSchedule } from '../broker/fees.js';
 import type { RiskConfig } from '../config.js';
+import type { Movers } from '../market/movers.js';
 import type { TradingService } from '../tradingService.js';
 import type { OrderRequest } from '../types.js';
 
@@ -14,7 +15,7 @@ export interface PublicSettings {
   risk: RiskConfig;
 }
 
-export function createApiServer(svc: TradingService, settings: PublicSettings): Server {
+export function createApiServer(svc: TradingService, settings: PublicSettings, movers: () => Promise<Movers>): Server {
   const app = express();
   app.use(express.json());
 
@@ -27,7 +28,26 @@ export function createApiServer(svc: TradingService, settings: PublicSettings): 
     res.json(clock.state());
   });
   app.get('/api/symbols', (_req, res) => {
-    res.json(feed.symbols().map((s) => ({ symbol: s, quote: feed.getQuote(s) ?? null })));
+    res.json(svc.watchlist().map((w) => ({ ...w, quote: feed.getQuote(w.symbol) ?? null })));
+  });
+  app.get('/api/search', (req, res) => {
+    res.json(svc.directory.search(String(req.query.q ?? ''), 20));
+  });
+  app.get('/api/movers', async (_req, res) => {
+    try {
+      res.json(await movers());
+    } catch (err) {
+      console.error('[movers]', err);
+      throw new BrokerError('לא הצלחתי לטעון את רשימת המניות שזזות היום', 502);
+    }
+  });
+  app.post('/api/watchlist', async (req, res) => {
+    await svc.addSymbol(String(req.body?.symbol ?? ''));
+    res.json(svc.watchlist());
+  });
+  app.delete('/api/watchlist/:symbol', async (req, res) => {
+    await svc.removeSymbol(req.params.symbol);
+    res.json(svc.watchlist());
   });
   app.get('/api/bars/:symbol', (req, res) => {
     res.json(feed.getBars(req.params.symbol.toUpperCase()));
@@ -102,7 +122,7 @@ export function createApiServer(svc: TradingService, settings: PublicSettings): 
         dataSource: feed.name,
         broker: broker.name,
         settings,
-        symbols: feed.symbols(),
+        symbols: svc.watchlist(),
         quotes: feed.symbols().map((s) => feed.getQuote(s)).filter(Boolean),
         account: await svc.account(),
         positions: await broker.getPositions(),

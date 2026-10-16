@@ -24,6 +24,8 @@ export interface State {
   settings?: PublicSettings;
   clock?: Clock;
   symbols: string[];
+  /** Company name per symbol. */
+  names: Record<string, string>;
   quotes: Record<string, Quote>;
   account?: Account;
   positions: Position[];
@@ -42,11 +44,22 @@ type Action =
   | { type: 'positions'; data: Position[] }
   | { type: 'clock'; data: Clock }
   | { type: 'notice'; data: Notice }
+  | { type: 'symbols'; data: WatchItem[] }
   | { type: 'dismiss'; ts: number };
 
 const initial: State = {
-  connected: false, dataSource: '', broker: '', symbols: [], quotes: {}, positions: [], orders: {}, fills: [], notices: [],
+  connected: false, dataSource: '', broker: '', symbols: [], names: {}, quotes: {}, positions: [], orders: {}, fills: [], notices: [],
 };
+
+export interface WatchItem {
+  symbol: string;
+  name: string;
+}
+
+const watch = (items: WatchItem[]) => ({
+  symbols: items.map((w) => w.symbol),
+  names: Object.fromEntries(items.map((w) => [w.symbol, w.name])),
+});
 
 function reducer(s: State, a: Action): State {
   switch (a.type) {
@@ -60,7 +73,7 @@ function reducer(s: State, a: Action): State {
         broker: d.broker,
         settings: d.settings,
         clock: d.clock,
-        symbols: d.symbols,
+        ...watch(d.symbols),
         quotes: Object.fromEntries((d.quotes as Quote[]).map((q) => [q.symbol, q])),
         account: d.account,
         positions: d.positions,
@@ -80,6 +93,8 @@ function reducer(s: State, a: Action): State {
       return { ...s, positions: a.data };
     case 'clock':
       return { ...s, clock: a.data };
+    case 'symbols':
+      return { ...s, ...watch(a.data) };
     case 'notice':
       return { ...s, notices: [...s.notices, a.data].slice(-5) };
     case 'dismiss':

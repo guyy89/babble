@@ -39,6 +39,8 @@ export interface PaperConfig {
   fees: FeeSchedule;
   /** Fraction of displayed size we assume we can take per quote update. */
   liquidityFraction: number;
+  /** Execute no further than this from the last trade, in bps (single-venue feeds show inflated spreads). 0 disables. */
+  maxQuoteDeviationBps: number;
 }
 
 export interface RiskConfig {
@@ -62,6 +64,8 @@ export const config = {
     keyId: str('ALPACA_KEY_ID', ''),
     secretKey: str('ALPACA_SECRET_KEY', ''),
     feed: str('ALPACA_FEED', 'iex'),
+    // Asset list (for search). Paper keys only work against the paper endpoint.
+    tradingUrl: str('ALPACA_TRADING_URL', 'https://paper-api.alpaca.markets'),
   },
   dataDir: str('DATA_DIR', resolve(process.cwd(), 'data')),
   paper: {
@@ -79,6 +83,7 @@ export const config = {
       tafMaxPerTrade: num('FINRA_TAF_MAX', 9.79),
     },
     liquidityFraction: num('LIQUIDITY_FRACTION', 1),
+    maxQuoteDeviationBps: num('MAX_QUOTE_DEVIATION_BPS', 10),
   } satisfies PaperConfig,
   risk: {
     maxDailyLoss: num('MAX_DAILY_LOSS', 150),

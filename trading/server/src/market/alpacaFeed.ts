@@ -31,7 +31,7 @@ export class AlpacaFeed extends BaseFeed {
 
   async start(): Promise<void> {
     await Promise.all(this.symbolList.map((s) => this.loadHistory(s)));
-    await this.loadSnapshots();
+    await this.loadSnapshots(this.symbolList);
     this.connect();
   }
 
@@ -52,8 +52,24 @@ export class AlpacaFeed extends BaseFeed {
     this.seedBars(symbol, bars);
   }
 
-  private async loadSnapshots(): Promise<void> {
-    const url = `${REST}/stocks/snapshots?symbols=${this.symbolList.join(',')}&feed=${this.creds.feed}`;
+  protected async onAdd(symbol: string): Promise<void> {
+    await this.loadHistory(symbol);
+    await this.loadSnapshots([symbol]);
+    this.sendIfOpen(JSON.stringify({ action: 'subscribe', quotes: [symbol], trades: [symbol] }));
+  }
+
+  protected onRemove(symbol: string): void {
+    this.sendIfOpen(JSON.stringify({ action: 'unsubscribe', quotes: [symbol], trades: [symbol] }));
+  }
+
+  /** Before the stream is authenticated, the subscribe-on-auth handler covers newly added symbols. */
+  private sendIfOpen(msg: string): void {
+    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(msg);
+  }
+
+  private async loadSnapshots(symbols: string[]): Promise<void> {
+    if (!symbols.length) return;
+    const url = `${REST}/stocks/snapshots?symbols=${symbols.join(',')}&feed=${this.creds.feed}`;
     const res = await fetch(url, { headers: this.headers() });
     if (!res.ok) throw new Error(`Alpaca snapshots: ${res.status} ${await res.text()}`);
     const body = (await res.json()) as Record<string, { latestQuote?: AQuote; latestTrade?: { p: number } }>;
@@ -91,7 +107,7 @@ export class AlpacaFeed extends BaseFeed {
       case 'success':
         if (m.msg === 'authenticated') {
           this.reconnectDelay = 1000;
-          this.ws?.send(JSON.stringify({ action: 'subscribe', quotes: this.symbolList, trades: this.symbolList }));
+          if (this.symbolList.length) this.ws?.send(JSON.stringify({ action: 'subscribe', quotes: this.symbolList, trades: this.symbolList }));
         }
         break;
       case 'error':

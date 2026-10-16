@@ -1,8 +1,10 @@
 import { EventEmitter } from 'node:events';
 import type { RiskConfig } from './config.js';
-import type { Broker } from './broker/broker.js';
+import { BrokerError, type Broker } from './broker/broker.js';
+import type { StateStore } from './broker/stateStore.js';
 import type { MarketClock } from './market/clock.js';
 import type { MarketDataFeed } from './market/feed.js';
+import type { SymbolDirectory } from './market/symbolDirectory.js';
 import { RiskManager } from './risk/riskManager.js';
 import type { Account, Order, OrderRequest, ServerEvent } from './types.js';
 
@@ -25,6 +27,8 @@ export class TradingService extends EventEmitter {
     readonly broker: Broker,
     readonly clock: MarketClock,
     private readonly riskCfg: RiskConfig,
+    readonly directory: SymbolDirectory,
+    private readonly watchlistStore?: StateStore<string[]>,
   ) {
     super();
     this.risk = new RiskManager(riskCfg);
@@ -84,6 +88,39 @@ export class TradingService extends EventEmitter {
       return rejected;
     }
     return this.broker.submitOrder({ ...req, symbol });
+  }
+
+  /** Watchlist symbols with company names, in watchlist order. */
+  watchlist(): { symbol: string; name: string }[] {
+    return this.feed.symbols().map((symbol) => ({ symbol, name: this.directory.get(symbol)?.name ?? '' }));
+  }
+
+  async addSymbol(raw: string): Promise<void> {
+    const symbol = String(raw ?? '').trim().toUpperCase();
+    if (!this.directory.get(symbol)) throw new BrokerError(`המניה ${symbol || '(ריק)'} לא נמצאה ברשימת המניות הנסחרות`, 404);
+    if (this.feed.symbols().includes(symbol)) return;
+    try {
+      await this.feed.addSymbol(symbol);
+    } catch (err) {
+      console.error(`[watchlist] could not add ${symbol}:`, err);
+      throw new BrokerError(`לא הצלחתי לטעון נתונים עבור ${symbol}`, 502);
+    }
+    this.watchlistChanged();
+  }
+
+  async removeSymbol(raw: string): Promise<void> {
+    const symbol = String(raw ?? '').trim().toUpperCase();
+    const position = (await this.broker.getPositions()).find((p) => p.symbol === symbol && p.qty !== 0);
+    const openOrders = (await this.broker.getOrders('open')).some((o) => o.symbol === symbol);
+    // Without a live quote the position can't be marked or protected, so it has to stay subscribed.
+    if (position || openOrders) throw new BrokerError(`אי אפשר להסיר את ${symbol} כשיש בה פוזיציה או פקודה פתוחה`, 409);
+    this.feed.removeSymbol(symbol);
+    this.watchlistChanged();
+  }
+
+  private watchlistChanged(): void {
+    this.watchlistStore?.save(this.feed.symbols(), true);
+    this.send({ type: 'symbols', data: this.watchlist() });
   }
 
   notice(level: 'info' | 'warn', message: string): void {

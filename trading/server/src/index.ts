@@ -6,14 +6,24 @@ import { config } from './config.js';
 import { AlpacaFeed } from './market/alpacaFeed.js';
 import { MarketClock } from './market/clock.js';
 import type { MarketDataFeed } from './market/feed.js';
+import { alpacaMovers, simMovers } from './market/movers.js';
 import { SimFeed } from './market/simFeed.js';
+import { alpacaSymbols, simSymbols, SymbolDirectory } from './market/symbolDirectory.js';
 import { TradingService } from './tradingService.js';
 
 const simulated = config.dataSource === 'sim';
 
+// The watchlist is edited from the UI and kept per data source; SYMBOLS is only the first-run default.
+const watchlistStore = new JsonFileStore<string[]>(resolve(config.dataDir, `watchlist-${config.dataSource}.json`));
+const symbols = watchlistStore.load() ?? config.symbols;
+
 const feed: MarketDataFeed = simulated
-  ? new SimFeed(config.symbols)
-  : new AlpacaFeed(config.symbols, config.alpaca);
+  ? new SimFeed(symbols)
+  : new AlpacaFeed(symbols, config.alpaca);
+
+const directory = new SymbolDirectory(simulated ? simSymbols : alpacaSymbols(config.alpaca));
+await directory.load();
+const movers = simulated ? simMovers(feed, directory) : alpacaMovers(config.alpaca, directory);
 
 // Synthetic data has no session, so the simulated market never closes.
 const clock = new MarketClock(simulated);
@@ -21,10 +31,10 @@ const clock = new MarketClock(simulated);
 const store = new JsonFileStore<PaperState>(resolve(config.dataDir, `paper-${config.dataSource}.json`));
 const broker = new PaperBroker(feed, clock, config.paper, store);
 
-const svc = new TradingService(feed, broker, clock, config.risk);
+const svc = new TradingService(feed, broker, clock, config.risk, directory, watchlistStore);
 await svc.start();
 
-const server = createApiServer(svc, { fees: config.paper.fees, risk: config.risk });
+const server = createApiServer(svc, { fees: config.paper.fees, risk: config.risk }, movers);
 server.listen(config.port, () => {
   console.log(`DayTrader API on http://localhost:${config.port}  (data: ${feed.name}, broker: ${broker.name})`);
 });

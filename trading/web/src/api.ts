@@ -1,6 +1,8 @@
+import type { Movers } from '../../server/src/market/movers';
+import type { SymbolInfo } from '../../server/src/market/symbolDirectory';
 import type { Bar, Order, OrderRequest } from '../../server/src/types';
 
-export type { OrderRequest };
+export type { Movers, OrderRequest, SymbolInfo };
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -22,4 +24,8 @@ export const api = {
   close: (symbol: string) => call<Order | null>('DELETE', `/positions/${symbol}`),
   flattenAll: () => call<void>('DELETE', '/positions'),
   resetAccount: () => call<unknown>('POST', '/account/reset'),
+  search: (q: string) => call<SymbolInfo[]>('GET', `/search?q=${encodeURIComponent(q)}`),
+  movers: () => call<Movers>('GET', '/movers'),
+  watch: (symbol: string) => call<unknown>('POST', '/watchlist', { symbol }),
+  unwatch: (symbol: string) => call<unknown>('DELETE', `/watchlist/${encodeURIComponent(symbol)}`),
 };

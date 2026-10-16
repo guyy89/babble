@@ -5,7 +5,7 @@ import { BaseFeed } from './feed.js';
 // volatility clustering, a spread that widens when volatility spikes, and
 // displayed sizes that vary per quote. Good enough to exercise every order path.
 
-const BASE_PRICES: Record<string, number> = {
+export const BASE_PRICES: Record<string, number> = {
   AAPL: 228, MSFT: 432, NVDA: 182, TSLA: 251, AMD: 162, SPY: 571, QQQ: 492, META: 590, AMZN: 188, GOOGL: 166,
 };
 
@@ -24,12 +24,25 @@ export class SimFeed extends BaseFeed {
 
   constructor(symbols: string[], private readonly rng: () => number = Math.random) {
     super(symbols);
-    for (const s of symbols) {
-      const price = BASE_PRICES[s] ?? 20 + this.rng() * 180;
-      // ~2% daily vol spread over a session of 250ms ticks
-      const baseVol = 0.02 / Math.sqrt((6.5 * 3600 * 1000) / TICK_MS);
-      this.state.set(s, { price, vol: baseVol, baseVol });
-    }
+    for (const s of this.symbolList) this.initState(s);
+  }
+
+  private initState(s: string): void {
+    const price = BASE_PRICES[s] ?? 20 + this.rng() * 180;
+    // ~2% daily vol spread over a session of 250ms ticks
+    const baseVol = 0.02 / Math.sqrt((6.5 * 3600 * 1000) / TICK_MS);
+    this.state.set(s, { price, vol: baseVol, baseVol });
+  }
+
+  protected async onAdd(symbol: string): Promise<void> {
+    this.initState(symbol);
+    const now = Date.now();
+    this.seedBars(symbol, this.generateHistory(symbol, now, 390));
+    this.step(symbol, now);
+  }
+
+  protected onRemove(symbol: string): void {
+    this.state.delete(symbol);
   }
 
   async start(): Promise<void> {

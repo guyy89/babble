@@ -7,6 +7,7 @@ import type { Account, Fill, Order, OrderRequest, Position, Quote } from '../typ
 import type { Broker } from './broker.js';
 import { BrokerError } from './broker.js';
 import { orderCommission, regulatoryFees } from './fees.js';
+import { executableQuote } from './quote.js';
 import { MARGIN_MIN_EQUITY, PDT_MIN_EQUITY, requirement, requirementRates, type RequirementRates } from './margin.js';
 import type { StateStore } from './stateStore.js';
 
@@ -53,7 +54,7 @@ export class PaperBroker extends EventEmitter implements Broker {
   private s: PaperState;
   private orders = new Map<string, Order>();
   private resting = new Set<string>();
-  private onQuote = (q: Quote) => this.handleQuote(q);
+  private onQuote = (q: Quote) => this.handleQuote(this.execQuote(q));
 
   constructor(
     private readonly feed: MarketDataFeed,
@@ -130,7 +131,7 @@ export class PaperBroker extends EventEmitter implements Broker {
       this.emit('order', { ...order });
     }
 
-    const q = this.feed.getQuote(order.symbol);
+    const q = this.quoteFor(order.symbol);
     if (q) this.tryExecute(order, q, true);
     if (WORKING.has(order.status) && order.type !== 'market') this.resting.add(order.id);
     this.persist();
@@ -176,6 +177,16 @@ export class PaperBroker extends EventEmitter implements Broker {
 
   // ---------------------------------------------------------------- internals
 
+  private execQuote(q: Quote): Quote {
+    return executableQuote(q, this.cfg.maxQuoteDeviationBps);
+  }
+
+  /** The quote orders execute against (see executableQuote). */
+  private quoteFor(symbol: string): Quote | undefined {
+    const q = this.feed.getQuote(symbol);
+    return q && this.execQuote(q);
+  }
+
   private freshState(): PaperState {
     return {
       version: 1,
@@ -216,7 +227,7 @@ export class PaperBroker extends EventEmitter implements Broker {
     if (!['market', 'limit', 'stop', 'stop_limit'].includes(o.type)) return `סוג פקודה לא נתמך: ${o.type}`;
     if (!Number.isInteger(o.qty) || o.qty <= 0) return 'הכמות חייבת להיות מספר שלם וחיובי של מניות';
     if (o.tif !== 'day' && o.tif !== 'gtc') return 'תוקף הפקודה חייב להיות עד סוף היום או עד ביטול';
-    const q = this.feed.getQuote(o.symbol);
+    const q = this.quoteFor(o.symbol);
     if (!q) return `אין נתוני מחיר עבור ${o.symbol || '(לא נבחרה מניה)'}`;
 
     const needLimit = o.type === 'limit' || o.type === 'stop_limit';
@@ -356,7 +367,7 @@ export class PaperBroker extends EventEmitter implements Broker {
     leg.qty = qty;
     leg.status = 'new';
     this.touch(leg);
-    const q = this.feed.getQuote(leg.symbol);
+    const q = this.quoteFor(leg.symbol);
     if (q) this.tryExecute(leg, q, true);
     if (WORKING.has(leg.status)) this.resting.add(leg.id);
   }

@@ -145,3 +145,23 @@ tbody tr.sel { background: #14202e; }
 
 .tf { display: flex; gap: 4px; }
 .tf button.on { background: #1d3557; border-color: var(--accent); }
+
+/* Watchlist: search, company names, movers */
+.watchlist .tabs button { flex: 1; }
+.search { position: relative; padding: 6px; border-bottom: 1px solid var(--line); }
+.search-results {
+  position: absolute; inset-inline: 6px; top: calc(100% - 2px); z-index: 20; max-height: 360px; overflow-y: auto;
+  background: #121922; border: 1px solid #2f3b48; border-radius: 4px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.search-row { display: flex; gap: 8px; align-items: baseline; padding: 6px 8px; cursor: pointer; }
+.search-row.on { background: #1d3557; }
+.search-row .co { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+td.sym { max-width: 150px; }
+.co { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: ltr; text-align: start; }
+td.sym .co { max-width: 140px; }
+.co-title { font-weight: 400; color: var(--muted); font-size: 12px; }
+tr.group td { color: var(--warn); font-weight: 600; font-size: 12px; padding-top: 10px; cursor: default; }
+tbody tr.group:hover { background: none; }
+button.ghost { background: none; border-color: transparent; color: var(--muted); }
+button.ghost:hover:not(:disabled) { color: var(--down); background: #2c1214; }
+.pad { padding: 8px 10px; }
