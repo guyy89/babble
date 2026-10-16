@@ -41,7 +41,7 @@ let now: number;
 function makeBroker(overrides: Partial<PaperConfig> = {}) {
   const clock = new MarketClock(true, () => now);
   // Allow tests to close the market by toggling `open`.
-  clock.state = () => ({ isOpen: open, nyDate: clock.nyDate(), minutesToClose: null, alwaysOpen: true });
+  clock.state = () => ({ isOpen: open, nyDate: clock.nyDate(), minutesToClose: null, alwaysOpen: true, now });
   broker = new PaperBroker(feed, clock, { ...cfg, ...overrides }, undefined, () => now);
   return broker.start();
 }

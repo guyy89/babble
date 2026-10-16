@@ -7,7 +7,8 @@
     "start": "tsx src/index.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "backtest": "tsx src/backtest/run.ts"
+    "backtest": "tsx src/backtest/run.ts",
+    "replay": "tsx src/backtest/replay.ts"
   },
   "dependencies": {
     "express": "^5.1.0",

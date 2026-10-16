@@ -68,8 +68,9 @@ export class OrbBot extends EventEmitter {
     this.s = store?.load() ?? { enabled: false, date: '', selected: false, candidates: [], trades: 0, losses: 0, log: [] };
   }
 
-  start(): void {
-    this.timer = setInterval(() => void this.tick(), 5000);
+  /** intervalMs: how often to act, in real time (every 5 s live; faster in a sped-up replay). */
+  start(intervalMs = 5000): void {
+    this.timer = setInterval(() => void this.tick(), intervalMs);
     void this.tick();
   }
 

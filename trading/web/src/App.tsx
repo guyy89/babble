@@ -10,6 +10,7 @@ import { DEFAULT_INDICATORS, usePref, type DrawnLines, type IndicatorConfig, typ
 import { useTradingStore } from './store';
 
 const OPEN = ['new', 'partially_filled', 'held'];
+const ilTime = new Intl.DateTimeFormat('he-IL', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 
 export function App() {
   const { state, dismiss } = useTradingStore();
@@ -120,7 +121,14 @@ export function App() {
         <span className={`badge ${state.broker === 'paper' ? 'paper' : 'live'}`}>
           {state.broker === 'paper' ? 'מדומה' : 'כסף אמיתי'}
         </span>
-        <span className="badge">נתונים: {state.dataSource === 'sim' ? 'מדומים' : state.dataSource === 'alpaca' ? 'אלפקה' : state.dataSource || '…'}</span>
+        {state.replay ? (
+          <span className="badge replay">
+            הקלטה של {state.replay.date.split('-').reverse().slice(0, 2).join('/')} · מהירות ×{state.replay.speed}
+            {state.clock?.now ? ` · ${ilTime.format(new Date(state.clock.now))}` : ''}
+          </span>
+        ) : (
+          <span className="badge">נתונים: {state.dataSource === 'sim' ? 'מדומים' : state.dataSource === 'alpaca' ? 'אלפקה' : state.dataSource || '…'}</span>
+        )}
         <span className={`badge ${state.clock?.isOpen ? 'open' : 'closed'}`}>
           {state.clock?.alwaysOpen ? 'שוק מדומה, פתוח תמיד' : state.clock?.isOpen ? `השוק פתוח · ${state.clock.minutesToClose} דק׳ לסגירה` : 'השוק סגור'}
         </span>

@@ -6,9 +6,10 @@ import { resolve } from 'node:path';
 import { config } from '../config.js';
 import { bucket, stats, type JournalTrade } from '../journal.js';
 import { alpacaSymbols } from '../market/symbolDirectory.js';
-import { DEFAULT_ORB, selectCandidates, type CandidateInput, type OrbParams } from '../strategy/orb.js';
+import { DEFAULT_ORB, selectCandidates, type OrbParams } from '../strategy/orb.js';
 import { AlpacaHistory } from './history.js';
 import { simulateDay, type DayResult } from './simulate.js';
+import { candidateRows, dayKey } from './universe.js';
 
 const arg = (name: string, fallback: string) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -18,7 +19,6 @@ const today = new Date().toISOString().slice(0, 10);
 const from = arg('from', new Date(Date.now() - 182 * 86400_000).toISOString().slice(0, 10));
 const to = arg('to', today);
 const params: OrbParams = { ...DEFAULT_ORB };
-const dayKey = (t: number) => new Date(t).toISOString().slice(0, 10); // daily bars are stamped at NY midnight (04:00/05:00Z)
 
 async function main() {
   if (config.dataSource !== 'alpaca' || !config.alpaca.keyId) throw new Error('The backtest needs Alpaca keys in .env (DATA_SOURCE=alpaca)');
@@ -39,17 +39,7 @@ async function main() {
 
   const days: DayResult[] = [];
   for (const date of dates) {
-    const rows: CandidateInput[] = [];
-    for (const [symbol, bars] of Object.entries(daily)) {
-      const i = bars.findIndex((b) => dayKey(b.t) === date);
-      if (i < 1) continue;
-      const prev = bars.slice(Math.max(0, i - 20), i);
-      rows.push({
-        symbol, name: names.get(symbol) ?? symbol, open: bars[i].o, prevClose: bars[i - 1].c,
-        avgVolume: prev.reduce((a, b) => a + b.v, 0) / prev.length,
-      });
-    }
-    const candidates = selectCandidates(rows, params);
+    const candidates = selectCandidates(candidateRows(daily, names, date), params);
     if (!candidates.length) {
       days.push({ date, candidates, trades: [] });
       continue;

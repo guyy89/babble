@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import type { Bar } from '../types.js';
 
@@ -54,8 +54,10 @@ export class AlpacaHistory {
     return out;
   }
 
-  /** Daily bars for many symbols (chunked), cached per date range. */
+  /** Daily bars for many symbols (chunked), cached per date range. A cached wider range is reused. */
   async daily(symbols: string[], start: string, end: string, onProgress?: (done: number, total: number) => void) {
+    const covering = this.coveringDaily(symbols.length, start, end);
+    if (covering) return covering;
     return this.cached(`daily-${this.creds.feed}-${start}-${end}-${symbols.length}.json`, async () => {
       const out: Record<string, Bar[]> = {};
       const chunk = 200;
@@ -65,6 +67,20 @@ export class AlpacaHistory {
       }
       return out;
     });
+  }
+
+  /** An already-downloaded daily file for the same universe whose range contains [start, end], trimmed to it. */
+  private coveringDaily(count: number, start: string, end: string): Record<string, Bar[]> | undefined {
+    if (!existsSync(this.cacheDir)) return undefined;
+    const re = new RegExp(`^daily-${this.creds.feed}-(\\d{4}-\\d{2}-\\d{2})-(\\d{4}-\\d{2}-\\d{2})-${count}\\.json$`);
+    for (const f of readdirSync(this.cacheDir)) {
+      const m = re.exec(f);
+      if (!m || m[1] > start || m[2] < end) continue;
+      const all = JSON.parse(readFileSync(resolve(this.cacheDir, f), 'utf8')) as Record<string, Bar[]>;
+      const day = (t: number) => new Date(t).toISOString().slice(0, 10);
+      return Object.fromEntries(Object.entries(all).map(([s, bars]) => [s, bars.filter((b) => day(b.t) >= start && day(b.t) <= end)]));
+    }
+    return undefined;
   }
 
   /** 1-minute bars for a few symbols on one New York date (pre- and post-market included). */

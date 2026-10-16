@@ -232,3 +232,4 @@ kbd { display: inline-block; min-width: 28px; padding: 2px 6px; border: 1px soli
 .bot-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 10px; align-items: start; }
 .bot-log { max-height: 220px; overflow-y: auto; font-size: 12px; display: flex; flex-direction: column; gap: 3px; padding: 4px 8px; }
 .tabs button.bot-on { color: var(--up); border-color: #134a44; }
+.badge.replay { color: #c77dff; border-color: #4b2e66; }

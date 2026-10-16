@@ -36,7 +36,10 @@ export interface PublicSettings {
   risk: RiskConfig;
 }
 
-export function createApiServer(svc: TradingService, settings: PublicSettings, market: MarketServices, bot: OrbBot): Server {
+export function createApiServer(
+  svc: TradingService, settings: PublicSettings, market: MarketServices, bot: OrbBot,
+  replay?: { date: string; speed: number },
+): Server {
   const app = express();
   app.use(express.json());
 
@@ -181,6 +184,7 @@ export function createApiServer(svc: TradingService, settings: PublicSettings, m
         orders: await broker.getOrders('all'),
         fills: (await broker.getFills()).slice(0, 200),
         bot: bot.status(),
+        replay: replay ? { date: replay.date, speed: replay.speed } : null,
       },
     });
 

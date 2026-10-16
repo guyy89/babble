@@ -10,6 +10,7 @@ export interface Clock {
   nyDate: string;
   minutesToClose: number | null;
   alwaysOpen: boolean;
+  now?: number;
 }
 
 export interface Notice {
@@ -34,6 +35,8 @@ export interface State {
   fills: Fill[];
   notices: Notice[];
   bot?: BotStatus;
+  /** Set when the server is replaying a recorded day. */
+  replay?: { date: string; speed: number } | null;
 }
 
 type Action =
@@ -83,6 +86,7 @@ function reducer(s: State, a: Action): State {
         orders: Object.fromEntries((d.orders as Order[]).map((o) => [o.id, o])),
         fills: d.fills,
         bot: d.bot,
+        replay: d.replay,
       };
     }
     case 'quote':

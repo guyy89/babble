@@ -30,7 +30,7 @@ beforeEach(async () => {
   feed = new FakeFeed(['AAPL']);
   feed.quote('AAPL', 100, 100.02);
   const clock = new MarketClock(true, () => now);
-  clock.state = () => ({ isOpen: true, nyDate: clock.nyDate(), minutesToClose: null, alwaysOpen: true });
+  clock.state = () => ({ isOpen: true, nyDate: clock.nyDate(), minutesToClose: null, alwaysOpen: true, now });
   broker = new PaperBroker(feed, clock, cfg, undefined, () => now);
   await broker.start();
 });

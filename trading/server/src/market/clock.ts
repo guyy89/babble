@@ -7,6 +7,8 @@ export interface ClockState {
   nyDate: string; // YYYY-MM-DD in New York
   minutesToClose: number | null;
   alwaysOpen: boolean;
+  /** The clock's current time (virtual in replay mode). */
+  now: number;
 }
 
 const OPEN_MIN = 9 * 60 + 30;
@@ -39,8 +41,9 @@ export class MarketClock {
   ) {}
 
   state(): ClockState {
-    const p = nyParts(this.now());
-    if (this.alwaysOpen) return { isOpen: true, nyDate: p.date, minutesToClose: null, alwaysOpen: true };
+    const now = this.now();
+    const p = nyParts(now);
+    if (this.alwaysOpen) return { isOpen: true, nyDate: p.date, minutesToClose: null, alwaysOpen: true, now };
     const weekday = p.weekday !== 'Sat' && p.weekday !== 'Sun';
     const isOpen = weekday && p.minuteOfDay >= OPEN_MIN && p.minuteOfDay < CLOSE_MIN;
     return {
@@ -48,6 +51,7 @@ export class MarketClock {
       nyDate: p.date,
       minutesToClose: isOpen ? CLOSE_MIN - p.minuteOfDay : null,
       alwaysOpen: false,
+      now,
     };
   }
 

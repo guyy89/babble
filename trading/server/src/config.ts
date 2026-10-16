@@ -54,7 +54,9 @@ export interface RiskConfig {
 
 export const config = {
   port: num('PORT', 4000),
-  dataSource: str('DATA_SOURCE', 'sim') as 'sim' | 'alpaca',
+  dataSource: str('DATA_SOURCE', 'sim') as 'sim' | 'alpaca' | 'replay',
+  // Replay a recorded day (needs Alpaca keys): REPLAY_DATE=YYYY-MM-DD, REPLAY_SPEED=× real time.
+  replay: { date: str('REPLAY_DATE', ''), speed: num('REPLAY_SPEED', 5) },
   broker: str('BROKER', 'paper') as 'paper',
   symbols: str('SYMBOLS', 'AAPL,MSFT,NVDA,TSLA,AMD,SPY,QQQ')
     .split(',')
