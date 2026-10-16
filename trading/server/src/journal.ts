@@ -60,7 +60,10 @@ const round2 = (x: number) => Math.round(x * 100) / 100;
 const nyHour = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', hourCycle: 'h23' });
 const nyDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' });
 
-/** Rebuilds round-trip trades from the fill history (oldest first) and summarises them. */
+/**
+ * Rebuilds round-trip trades from the fill history and summarises them. Pass fills oldest first:
+ * fills with the same timestamp keep their input order (the sort is stable).
+ */
 export function buildJournal(fills: Fill[], orders: Order[]): Journal {
   const byId = new Map(orders.map((o) => [o.id, o]));
   const open = new Map<string, JournalTrade & { qty: number; entryQty: number; exitQty: number }>();
@@ -79,7 +82,8 @@ export function buildJournal(fills: Fill[], orders: Order[]): Journal {
         };
         const entry = byId.get(f.orderId);
         const sl = entry?.legIds?.map((id) => byId.get(id)).find((o) => o?.type === 'stop');
-        if (sl?.stopPrice !== undefined) t.initialRisk = round2(Math.abs(f.price - sl.stopPrice) * (entry?.qty ?? f.qty));
+        const initialStop = sl?.initialStopPrice ?? sl?.stopPrice;
+        if (initialStop !== undefined) t.initialRisk = round2(Math.abs(f.price - initialStop) * (entry?.qty ?? f.qty));
         open.set(f.symbol, t);
       }
       const adding = (t.direction === 'long') === (delta > 0);

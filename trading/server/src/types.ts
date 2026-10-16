@@ -90,6 +90,8 @@ export interface Order {
   legIds?: string[];
   /** Orders sharing an ocoGroup cancel each other when one fills. */
   ocoGroup?: string;
+  /** Bracket stop-loss: the stop as first placed, kept when the stop is later moved (journal R uses it). */
+  initialStopPrice?: number;
   /** Trailing stop: the stop follows the market at this distance (in $) and never moves back. */
   trailAmount?: number;
 }

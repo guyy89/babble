@@ -365,7 +365,7 @@ export class PaperBroker extends EventEmitter implements Broker {
       legs.push({ ...base, id: randomUUID(), type: 'limit', limitPrice: req.takeProfit.limitPrice });
     }
     if (req.stopLoss) {
-      legs.push({ ...base, id: randomUUID(), type: 'stop', stopPrice: req.stopLoss.stopPrice, limitPrice: undefined });
+      legs.push({ ...base, id: randomUUID(), type: 'stop', stopPrice: req.stopLoss.stopPrice, initialStopPrice: req.stopLoss.stopPrice, limitPrice: undefined });
     }
     for (const leg of legs) {
       leg.status = 'held';

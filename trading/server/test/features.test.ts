@@ -115,3 +115,16 @@ describe('scanner filter', () => {
     expect(applyFilter(rows, { minGapPct: 5, sort: 'gap' }).map((r) => r.symbol)).toEqual(['C', 'A']);
   });
 });
+
+describe('journal R after moving the stop', () => {
+  it('keeps the initial risk when the stop is moved to breakeven', async () => {
+    await broker.submitOrder({ symbol: 'AAPL', side: 'buy', qty: 10, type: 'market', stopLoss: { stopPrice: 99 } });
+    feed.quote('AAPL', 102, 102.02);
+    const sl = (await broker.getOrders('open')).find((o) => o.type === 'stop')!;
+    await broker.modifyOrder(sl.id, { stopPrice: 100.02 });
+    await broker.closePosition('AAPL');
+    const j = buildJournal((await broker.getFills()).reverse(), await broker.getOrders('all'));
+    expect(j.trades[0].initialRisk).toBeCloseTo(10.2); // (100.02 - 99) × 10, not 0
+    expect(j.trades[0].r).toBeCloseTo((102 - 100.02) * 10 / 10.2, 1);
+  });
+});

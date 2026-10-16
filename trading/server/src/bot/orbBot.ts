@@ -253,7 +253,7 @@ export class OrbBot extends EventEmitter {
   private async trackResults(): Promise<void> {
     const entered = this.s.candidates.filter((c) => c.state === 'entered');
     if (!entered.length) return;
-    const journal = buildJournal(await this.svc.broker.getFills(), await this.svc.broker.getOrders('all'));
+    const journal = buildJournal((await this.svc.broker.getFills()).reverse(), await this.svc.broker.getOrders('all'));
     for (const c of entered) {
       const t = journal.trades.find((x) => x.symbol === c.symbol && !x.open && x.openedAt >= (c.enteredAt ?? 0) - 60_000);
       if (!t) continue;

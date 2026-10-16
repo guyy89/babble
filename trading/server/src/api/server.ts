@@ -98,7 +98,7 @@ export function createApiServer(
     res.json(bot.status());
   });
   app.get('/api/journal', async (_req, res) => {
-    res.json(buildJournal(await broker.getFills(), await broker.getOrders('all')));
+    res.json(buildJournal((await broker.getFills()).reverse(), await broker.getOrders('all')));
   });
   app.get('/api/account', async (_req, res) => {
     res.json(await svc.account());

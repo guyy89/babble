@@ -46,7 +46,7 @@ async function runDay(date: string, history: AlpacaHistory, directory: SymbolDir
   svc.stop();
   bot.stop();
 
-  const journal = buildJournal(await broker.getFills(), await broker.getOrders('all'));
+  const journal = buildJournal((await broker.getFills()).reverse(), await broker.getOrders('all'));
   const status = bot.status();
 
   // The backtest's view of the same day, for comparison.
