@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../api';
 import { money, pnlClass, price, signed, time } from '../format';
+import { orderKind, SIDE, STATUS } from '../he';
 import type { Fill, Order, Position } from '../store';
 
 interface Props {
@@ -20,17 +21,17 @@ export function Blotter({ positions, orders, fills, onSelect }: Props) {
   return (
     <div className="panel blotter">
       <div className="tabs">
-        <button className={tab === 'positions' ? 'on' : ''} onClick={() => setTab('positions')}>Positions ({openPositions.length})</button>
-        <button className={tab === 'open' ? 'on' : ''} onClick={() => setTab('open')}>Working ({open.length})</button>
-        <button className={tab === 'orders' ? 'on' : ''} onClick={() => setTab('orders')}>All orders</button>
-        <button className={tab === 'fills' ? 'on' : ''} onClick={() => setTab('fills')}>Fills</button>
+        <button className={tab === 'positions' ? 'on' : ''} onClick={() => setTab('positions')}>פוזיציות ({openPositions.length})</button>
+        <button className={tab === 'open' ? 'on' : ''} onClick={() => setTab('open')}>פקודות פתוחות ({open.length})</button>
+        <button className={tab === 'orders' ? 'on' : ''} onClick={() => setTab('orders')}>כל הפקודות</button>
+        <button className={tab === 'fills' ? 'on' : ''} onClick={() => setTab('fills')}>ביצועים</button>
         <span className="spacer" />
-        {tab === 'open' && open.length > 0 && <button className="danger" onClick={() => api.cancelAll()}>Cancel all</button>}
+        {tab === 'open' && open.length > 0 && <button className="danger" onClick={() => api.cancelAll()}>בטל הכל</button>}
       </div>
       <div className="table-wrap">
         {tab === 'positions' && (
           <table>
-            <thead><tr><th>Symbol</th><th>Qty</th><th>Avg</th><th>Last</th><th>Mkt value</th><th>Unrealized</th><th>Realized today</th><th /></tr></thead>
+            <thead><tr><th>מניה</th><th>כמות</th><th>מחיר ממוצע</th><th>אחרון</th><th>שווי</th><th>רווח פתוח</th><th>ממומש היום</th><th /></tr></thead>
             <tbody>
               {positions.map((p) => (
                 <tr key={p.symbol} onClick={() => onSelect(p.symbol)}>
@@ -41,10 +42,10 @@ export function Blotter({ positions, orders, fills, onSelect }: Props) {
                   <td>{money(p.marketValue)}</td>
                   <td className={pnlClass(p.unrealizedPnl)}>{signed(p.unrealizedPnl)}</td>
                   <td className={pnlClass(p.realizedPnlToday)}>{signed(p.realizedPnlToday)}</td>
-                  <td>{p.qty !== 0 && <button className="danger sm" onClick={(e) => { e.stopPropagation(); api.close(p.symbol); }}>Close</button>}</td>
+                  <td>{p.qty !== 0 && <button className="danger sm" onClick={(e) => { e.stopPropagation(); api.close(p.symbol); }}>סגור</button>}</td>
                 </tr>
               ))}
-              {positions.length === 0 && <tr><td colSpan={8} className="muted">No positions</td></tr>}
+              {positions.length === 0 && <tr><td colSpan={8} className="muted">אין פוזיציות</td></tr>}
             </tbody>
           </table>
         )}
@@ -53,16 +54,16 @@ export function Blotter({ positions, orders, fills, onSelect }: Props) {
         )}
         {tab === 'fills' && (
           <table>
-            <thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Price</th><th>Commission</th><th>SEC/FINRA</th></tr></thead>
+            <thead><tr><th>שעה</th><th>מניה</th><th>צד</th><th>כמות</th><th>מחיר</th><th>עמלה</th><th>אגרות רגולציה</th></tr></thead>
             <tbody>
               {fills.map((f) => (
                 <tr key={f.id} onClick={() => onSelect(f.symbol)}>
                   <td>{time(f.ts)}</td><td><b>{f.symbol}</b></td>
-                  <td className={f.side === 'buy' ? 'up' : 'down'}>{f.side.toUpperCase()}</td>
+                  <td className={f.side === 'buy' ? 'up' : 'down'}>{SIDE[f.side]}</td>
                   <td>{f.qty}</td><td>{price(f.price)}</td><td>{money(f.commission)}</td><td>{f.fees ? money(f.fees) : '—'}</td>
                 </tr>
               ))}
-              {fills.length === 0 && <tr><td colSpan={7} className="muted">No fills yet</td></tr>}
+              {fills.length === 0 && <tr><td colSpan={7} className="muted">אין ביצועים עדיין</td></tr>}
             </tbody>
           </table>
         )}
@@ -74,23 +75,23 @@ export function Blotter({ positions, orders, fills, onSelect }: Props) {
 function OrdersTable({ orders, onSelect }: { orders: Order[]; onSelect: (s: string) => void }) {
   return (
     <table>
-      <thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th>Type</th><th>Qty</th><th>Filled</th><th>Limit</th><th>Stop</th><th>Status</th><th /></tr></thead>
+      <thead><tr><th>שעה</th><th>מניה</th><th>צד</th><th>סוג</th><th>כמות</th><th>בוצע</th><th>לימיט</th><th>סטופ</th><th>סטטוס</th><th /></tr></thead>
       <tbody>
         {orders.map((o) => (
           <tr key={o.id} onClick={() => onSelect(o.symbol)} title={o.rejectReason}>
             <td>{time(o.createdAt)}</td>
             <td><b>{o.symbol}</b></td>
-            <td className={o.side === 'buy' ? 'up' : 'down'}>{o.side.toUpperCase()}</td>
-            <td>{o.parentId ? (o.type === 'stop' ? 'SL' : 'TP') : o.type.replace('_', ' ')}{o.legIds ? ' ⧉' : ''}</td>
+            <td className={o.side === 'buy' ? 'up' : 'down'}>{SIDE[o.side]}</td>
+            <td>{orderKind(o)}{o.legIds ? ' ⧉' : ''}</td>
             <td>{o.qty}</td>
-            <td>{o.filledQty ? `${o.filledQty} @ ${price(o.avgFillPrice)}` : '—'}</td>
+            <td>{o.filledQty ? `${o.filledQty} במחיר ${price(o.avgFillPrice)}` : '—'}</td>
             <td>{price(o.limitPrice)}</td>
             <td>{price(o.stopPrice)}</td>
-            <td className={`status ${o.status}`}>{o.status.replace('_', ' ')}{o.rejectReason ? ` — ${o.rejectReason}` : ''}</td>
-            <td>{OPEN.has(o.status) && <button className="sm" onClick={(e) => { e.stopPropagation(); api.cancel(o.id); }}>Cancel</button>}</td>
+            <td className={`status ${o.status}`}>{STATUS[o.status]}{o.rejectReason ? `: ${o.rejectReason}` : ''}</td>
+            <td>{OPEN.has(o.status) && <button className="sm" onClick={(e) => { e.stopPropagation(); api.cancel(o.id); }}>בטל</button>}</td>
           </tr>
         ))}
-        {orders.length === 0 && <tr><td colSpan={10} className="muted">No orders</td></tr>}
+        {orders.length === 0 && <tr><td colSpan={10} className="muted">אין פקודות</td></tr>}
       </tbody>
     </table>
   );

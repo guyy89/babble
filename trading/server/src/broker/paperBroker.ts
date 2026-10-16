@@ -139,8 +139,8 @@ export class PaperBroker extends EventEmitter implements Broker {
 
   async cancelOrder(id: string): Promise<Order> {
     const o = this.orders.get(id);
-    if (!o) throw new BrokerError(`Order ${id} not found`, 404);
-    if (!OPEN.has(o.status)) throw new BrokerError(`Order is already ${o.status}`);
+    if (!o) throw new BrokerError(`הפקודה ${id} לא נמצאה`, 404);
+    if (!OPEN.has(o.status)) throw new BrokerError(`הפקודה כבר לא פתוחה (${o.status})`);
     this.finish(o, 'canceled');
     this.persist();
     return o;
@@ -212,26 +212,26 @@ export class PaperBroker extends EventEmitter implements Broker {
   }
 
   private validate(o: Order, req: OrderRequest): string | null {
-    if (o.side !== 'buy' && o.side !== 'sell') return 'side must be buy or sell';
-    if (!['market', 'limit', 'stop', 'stop_limit'].includes(o.type)) return `unsupported order type ${o.type}`;
-    if (!Number.isInteger(o.qty) || o.qty <= 0) return 'qty must be a positive whole number of shares';
-    if (o.tif !== 'day' && o.tif !== 'gtc') return 'tif must be day or gtc';
+    if (o.side !== 'buy' && o.side !== 'sell') return 'צד הפקודה חייב להיות קנייה או מכירה';
+    if (!['market', 'limit', 'stop', 'stop_limit'].includes(o.type)) return `סוג פקודה לא נתמך: ${o.type}`;
+    if (!Number.isInteger(o.qty) || o.qty <= 0) return 'הכמות חייבת להיות מספר שלם וחיובי של מניות';
+    if (o.tif !== 'day' && o.tif !== 'gtc') return 'תוקף הפקודה חייב להיות עד סוף היום או עד ביטול';
     const q = this.feed.getQuote(o.symbol);
-    if (!q) return `no market data for ${o.symbol || '(empty symbol)'}`;
+    if (!q) return `אין נתוני מחיר עבור ${o.symbol || '(לא נבחרה מניה)'}`;
 
     const needLimit = o.type === 'limit' || o.type === 'stop_limit';
     const needStop = o.type === 'stop' || o.type === 'stop_limit';
-    if (needLimit && !validPrice(o.limitPrice)) return 'limitPrice is required and must be a valid price (cent increments above $1)';
-    if (needStop && !validPrice(o.stopPrice)) return 'stopPrice is required and must be a valid price (cent increments above $1)';
+    if (needLimit && !validPrice(o.limitPrice)) return 'חסר מחיר לימיט, או שהמחיר לא תקין (מעל $1 צריך להיות בסנטים שלמים)';
+    if (needStop && !validPrice(o.stopPrice)) return 'חסר מחיר סטופ, או שהמחיר לא תקין (מעל $1 צריך להיות בסנטים שלמים)';
     if (!needLimit) delete o.limitPrice;
     if (!needStop) delete o.stopPrice;
     if (o.type === 'stop' || o.type === 'stop_limit') {
-      if (o.side === 'buy' && o.stopPrice! <= q.ask) return `buy stop must be above the ask (${q.ask})`;
-      if (o.side === 'sell' && o.stopPrice! >= q.bid) return `sell stop must be below the bid (${q.bid})`;
+      if (o.side === 'buy' && o.stopPrice! <= q.ask) return `סטופ קנייה חייב להיות מעל מחיר ההיצע (${q.ask})`;
+      if (o.side === 'sell' && o.stopPrice! >= q.bid) return `סטופ מכירה חייב להיות מתחת למחיר הביקוש (${q.bid})`;
     }
 
     const clock = this.clock.state();
-    if (!clock.isOpen && o.type === 'market') return 'market is closed — use a limit order to queue for the open';
+    if (!clock.isOpen && o.type === 'market') return 'השוק סגור. אפשר לשלוח פקודת לימיט שתמתין לפתיחה';
 
     const ref = this.referencePrice(o, q);
 
@@ -249,18 +249,18 @@ export class PaperBroker extends EventEmitter implements Broker {
       const { equity, excess, rates } = this.marginState();
       if (o.side === 'sell' && rates.short === null) {
         return this.cfg.accountType === 'cash'
-          ? 'short selling is not allowed in a cash account'
-          : `short selling needs at least $${MARGIN_MIN_EQUITY.toLocaleString()} of equity (have $${equity.toFixed(2)})`;
+          ? 'בחשבון מזומן אין אפשרות לשורט'
+          : `שורט דורש הון של לפחות $${MARGIN_MIN_EQUITY.toLocaleString()} (יש $${equity.toFixed(2)})`;
       }
       const rate = o.side === 'buy' ? rates.long : rates.short!;
       const needed = openingQty * ref * rate + this.reservedRequirement(rates);
       if (needed > excess + 1e-6) {
-        return `insufficient buying power: order needs $${(openingQty * ref).toFixed(2)}, available $${(Math.max(0, excess - this.reservedRequirement(rates)) / rate).toFixed(2)}`;
+        return `אין מספיק כוח קנייה: הפקודה צריכה $${(openingQty * ref).toFixed(2)}, וזמין $${(Math.max(0, excess - this.reservedRequirement(rates)) / rate).toFixed(2)}`;
       }
     }
 
     if (closingQty > 0 && this.wouldBreachPdt(o.symbol)) {
-      return 'pattern day trader protection: this would be a 4th day trade in 5 business days with equity under $25,000';
+      return 'כלל הסוחר היומי הישן: זו הייתה עסקה יומית רביעית בתוך 5 ימי מסחר, עם הון מתחת ל-$25,000';
     }
     return null;
   }
@@ -268,14 +268,14 @@ export class PaperBroker extends EventEmitter implements Broker {
   private validateBracket(o: Order, req: OrderRequest, ref: number): string | null {
     const tp = req.takeProfit?.limitPrice;
     const sl = req.stopLoss?.stopPrice;
-    if (req.takeProfit && !validPrice(tp)) return 'takeProfit.limitPrice must be a valid price';
-    if (req.stopLoss && !validPrice(sl)) return 'stopLoss.stopPrice must be a valid price';
+    if (req.takeProfit && !validPrice(tp)) return 'מחיר יעד הרווח לא תקין';
+    if (req.stopLoss && !validPrice(sl)) return 'מחיר הסטופ לא תקין';
     if (o.side === 'buy') {
-      if (tp !== undefined && tp <= ref) return `take-profit (${tp}) must be above entry (~${ref})`;
-      if (sl !== undefined && sl >= ref) return `stop-loss (${sl}) must be below entry (~${ref})`;
+      if (tp !== undefined && tp <= ref) return `יעד הרווח (${tp}) חייב להיות מעל מחיר הכניסה (בערך ${ref})`;
+      if (sl !== undefined && sl >= ref) return `הסטופ (${sl}) חייב להיות מתחת למחיר הכניסה (בערך ${ref})`;
     } else {
-      if (tp !== undefined && tp >= ref) return `take-profit (${tp}) must be below entry (~${ref})`;
-      if (sl !== undefined && sl <= ref) return `stop-loss (${sl}) must be above entry (~${ref})`;
+      if (tp !== undefined && tp >= ref) return `יעד הרווח (${tp}) חייב להיות מתחת למחיר הכניסה (בערך ${ref})`;
+      if (sl !== undefined && sl <= ref) return `הסטופ (${sl}) חייב להיות מעל מחיר הכניסה (בערך ${ref})`;
     }
     return null;
   }

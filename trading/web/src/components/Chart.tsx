@@ -5,6 +5,7 @@ import {
 } from 'lightweight-charts';
 import { api } from '../api';
 import { aggregate, atr, ema, rsi } from '../indicators';
+import { ORDER_TYPE, SIDE } from '../he';
 import { onBar, type Bar, type Order, type Position } from '../store';
 
 const nyTime = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
@@ -151,7 +152,7 @@ export function Chart({ symbol, timeframe, orders, position, onPickPrice, onAtr 
     if (position && position.qty !== 0) {
       linesRef.current.push(candles.createPriceLine({
         price: position.avgPrice, color: '#4c8dff', lineWidth: 2, lineStyle: LineStyle.Solid,
-        title: `${position.qty > 0 ? 'LONG' : 'SHORT'} ${Math.abs(position.qty)}`,
+        title: `${position.qty > 0 ? 'לונג' : 'שורט'} ${Math.abs(position.qty)}`,
       }));
     }
     for (const o of orders) {
@@ -160,7 +161,7 @@ export function Chart({ symbol, timeframe, orders, position, onPickPrice, onAtr 
       linesRef.current.push(candles.createPriceLine({
         price: p, color: o.side === 'buy' ? '#26a69a' : '#ef5350', lineWidth: 1,
         lineStyle: o.status === 'held' ? LineStyle.SparseDotted : LineStyle.Dashed,
-        title: `${o.parentId ? (o.type === 'stop' ? 'SL' : 'TP') : o.type.toUpperCase()} ${o.side} ${o.qty - o.filledQty}`,
+        title: `${o.parentId ? (o.type === 'stop' ? 'סטופ' : 'יעד') : ORDER_TYPE[o.type]} ${SIDE[o.side]} ${o.qty - o.filledQty}`,
       }));
     }
   }, [orders, position, symbol, timeframe]);

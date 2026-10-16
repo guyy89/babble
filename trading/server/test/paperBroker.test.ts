@@ -89,7 +89,7 @@ describe('market orders', () => {
     open = false;
     const o = await broker.submitOrder({ symbol: 'AAPL', side: 'buy', qty: 1, type: 'market' });
     expect(o.status).toBe('rejected');
-    expect(o.rejectReason).toMatch(/closed/);
+    expect(o.rejectReason).toMatch(/השוק סגור/);
   });
 });
 
@@ -200,7 +200,7 @@ describe('buying power and PDT', () => {
     await makeBroker({ accountType: 'cash', startingCash: 1000 });
     const o = await broker.submitOrder({ symbol: 'AAPL', side: 'buy', qty: 20, type: 'market' });
     expect(o.status).toBe('rejected');
-    expect(o.rejectReason).toMatch(/buying power/);
+    expect(o.rejectReason).toMatch(/כוח קנייה/);
   });
 
   it('counts buying power reserved by working orders', async () => {
@@ -220,7 +220,7 @@ describe('buying power and PDT', () => {
     await broker.submitOrder({ symbol: 'AAPL', side: 'buy', qty: 1, type: 'market' });
     const o = await broker.submitOrder({ symbol: 'AAPL', side: 'sell', qty: 1, type: 'market' });
     expect(o.status).toBe('rejected');
-    expect(o.rejectReason).toMatch(/pattern day trader/);
+    expect(o.rejectReason).toMatch(/עסקה יומית רביעית/);
   });
 });
 
@@ -251,15 +251,15 @@ describe('risk manager', () => {
   it('blocks opening orders after the daily loss limit but allows closing', async () => {
     const account = { ...(await broker.getAccount()), dayPnl: -600 };
     const position = { symbol: 'AAPL', qty: 10, avgPrice: 160, marketPrice: 100, marketValue: 1000, unrealizedPnl: -600, realizedPnlToday: 0 };
-    expect(risk.check({ symbol: 'AAPL', side: 'buy', qty: 1, type: 'market' }, { account, position, quote })).toMatch(/daily loss/);
+    expect(risk.check({ symbol: 'AAPL', side: 'buy', qty: 1, type: 'market' }, { account, position, quote })).toMatch(/ההפסד היומי/);
     expect(risk.check({ symbol: 'AAPL', side: 'sell', qty: 10, type: 'market' }, { account, position, quote })).toBeNull();
   });
 
   it('limits order and position size', async () => {
     const account = await broker.getAccount();
-    expect(risk.check({ symbol: 'AAPL', side: 'buy', qty: 200, type: 'market' }, { account, quote })).toMatch(/max order/);
+    expect(risk.check({ symbol: 'AAPL', side: 'buy', qty: 200, type: 'market' }, { account, quote })).toMatch(/גודל פקודה מקסימלי/);
     const position = { symbol: 'AAPL', qty: 150, avgPrice: 100, marketPrice: 100, marketValue: 15000, unrealizedPnl: 0, realizedPnlToday: 0 };
-    expect(risk.check({ symbol: 'AAPL', side: 'buy', qty: 100, type: 'market' }, { account, position, quote })).toMatch(/max position/);
+    expect(risk.check({ symbol: 'AAPL', side: 'buy', qty: 100, type: 'market' }, { account, position, quote })).toMatch(/גודל פוזיציה מקסימלי/);
   });
 });
 
@@ -369,14 +369,14 @@ describe('risk per trade', () => {
 
   it('requires a stop-loss on opening orders', async () => {
     const account = await broker.getAccount();
-    expect(risk.check({ symbol: 'AAPL', side: 'buy', qty: 10, type: 'market' }, { account, quote })).toMatch(/stop-loss is required/);
+    expect(risk.check({ symbol: 'AAPL', side: 'buy', qty: 10, type: 'market' }, { account, quote })).toMatch(/חובה סטופ/);
   });
 
   it('caps the loss to the stop', async () => {
     const account = await broker.getAccount();
     const ok = { symbol: 'AAPL', side: 'buy' as const, qty: 100, type: 'limit' as const, limitPrice: 100, stopLoss: { stopPrice: 99.5 } };
     expect(risk.check(ok, { account, quote })).toBeNull();
-    expect(risk.check({ ...ok, qty: 101 }, { account, quote })).toMatch(/max 100 shares/);
+    expect(risk.check({ ...ok, qty: 101 }, { account, quote })).toMatch(/עד 100 מניות/);
   });
 
   it('does not require a stop to close a position', async () => {

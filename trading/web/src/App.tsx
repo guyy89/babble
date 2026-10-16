@@ -23,48 +23,48 @@ export function App() {
   const a = state.account;
 
   const resetAccount = () => {
-    if (confirm('Reset the paper account? All positions, orders and history will be erased.')) api.resetAccount();
+    if (confirm('לאפס את החשבון המדומה? כל הפוזיציות, הפקודות וההיסטוריה יימחקו.')) api.resetAccount();
   };
 
   const flattenAll = () => {
-    if (confirm('Cancel all orders and close every position at market?')) api.flattenAll();
+    if (confirm('לבטל את כל הפקודות ולסגור את כל הפוזיציות במחיר השוק?')) api.flattenAll();
   };
 
   return (
     <div className="app">
       <header>
-        <div className="brand">DayTrader</div>
+        <div className="brand">מסחר יומי</div>
         <span className={`badge ${state.broker === 'paper' ? 'paper' : 'live'}`}>
-          {state.broker === 'paper' ? 'PAPER' : state.broker.toUpperCase()}
+          {state.broker === 'paper' ? 'מדומה' : 'כסף אמיתי'}
         </span>
-        <span className="badge">data: {state.dataSource || '…'}</span>
+        <span className="badge">נתונים: {state.dataSource === 'sim' ? 'מדומים' : state.dataSource === 'alpaca' ? 'אלפקה' : state.dataSource || '…'}</span>
         <span className={`badge ${state.clock?.isOpen ? 'open' : 'closed'}`}>
-          {state.clock?.alwaysOpen ? 'SIM SESSION' : state.clock?.isOpen ? `OPEN · ${state.clock.minutesToClose}m to close` : 'MARKET CLOSED'}
+          {state.clock?.alwaysOpen ? 'שוק מדומה, פתוח תמיד' : state.clock?.isOpen ? `השוק פתוח · ${state.clock.minutesToClose} דק׳ לסגירה` : 'השוק סגור'}
         </span>
-        {!state.connected && <span className="badge closed">DISCONNECTED</span>}
+        {!state.connected && <span className="badge closed">אין חיבור לשרת</span>}
         <div className="spacer" />
         {a && (
           <div className="acct">
-            <Stat label="Equity" value={money(a.equity)} />
-            <Stat label="Day P&L" value={signed(a.dayPnl)} cls={pnlClass(a.dayPnl)} />
-            <Stat label="Realized" value={signed(a.realizedPnlToday)} cls={pnlClass(a.realizedPnlToday)} />
-            <Stat label="Fees today" value={money(a.commissionsToday)} />
-            <Stat label="Buying power" value={money(a.buyingPower)} />
+            <Stat label="הון" value={money(a.equity)} />
+            <Stat label="רווח/הפסד היום" value={signed(a.dayPnl)} cls={pnlClass(a.dayPnl)} />
+            <Stat label="ממומש" value={signed(a.realizedPnlToday)} cls={pnlClass(a.realizedPnlToday)} />
+            <Stat label="עמלות היום" value={money(a.commissionsToday)} />
+            <Stat label="כוח קנייה" value={money(a.buyingPower)} />
             {a.marginModel === 'pdt' && (
-              <Stat label="Day trades (5d)" value={`${a.dayTradeCount}${a.equity < 25000 && a.accountType === 'margin' ? ' / 3' : ''}`} />
+              <Stat label="עסקאות יומיות (5 ימים)" value={`${a.dayTradeCount}${a.equity < 25000 && a.accountType === 'margin' ? ' / 3' : ''}`} />
             )}
           </div>
         )}
-        {state.broker === 'paper' && <button onClick={resetAccount}>Reset</button>}
-        <button className="danger" onClick={flattenAll}>Flatten all</button>
+        {state.broker === 'paper' && <button onClick={resetAccount}>איפוס חשבון</button>}
+        <button className="danger" onClick={flattenAll}>סגור הכל</button>
       </header>
 
       {a?.tradingBlocked && <div className="banner">{a.blockReason}</div>}
 
       <aside className="panel watchlist">
-        <div className="panel-title">Watchlist</div>
+        <div className="panel-title">רשימת מעקב</div>
         <table>
-          <thead><tr><th>Symbol</th><th>Bid</th><th>Ask</th><th>Last</th></tr></thead>
+          <thead><tr><th>מניה</th><th>ביקוש</th><th>היצע</th><th>אחרון</th></tr></thead>
           <tbody>
             {state.symbols.map((s) => {
               const q = state.quotes[s];
@@ -87,16 +87,16 @@ export function App() {
           {symbol}
           <span className="tf">
             {TIMEFRAMES.map((tf) => (
-              <button key={tf} className={tf === timeframe ? 'sm on' : 'sm'} onClick={() => setTimeframe(tf)}>{tf}m</button>
+              <button key={tf} className={tf === timeframe ? 'sm on' : 'sm'} onClick={() => setTimeframe(tf)}>{tf} דק׳</button>
             ))}
           </span>
           <span className="muted small">
-            <span style={{ color: '#f0b90b' }}>VWAP</span> · <span style={{ color: '#4c8dff' }}>EMA 9</span> ·{' '}
-            <span style={{ color: '#c77dff' }}>EMA 20</span> · RSI 14 · ATR 14: {atrValue === null ? '—' : price(atrValue)}
+            <span style={{ color: '#f0b90b' }}>ממוצע משוקלל נפח</span> · <span style={{ color: '#4c8dff' }}>ממוצע נע 9</span> ·{' '}
+            <span style={{ color: '#c77dff' }}>ממוצע נע 20</span> · חוזק יחסי 14 (למטה) · תנודתיות ממוצעת לנר: {atrValue === null ? '—' : price(atrValue)}
           </span>
           {position && position.qty !== 0 && (
             <span className={`pos-pill ${pnlClass(position.unrealizedPnl)}`}>
-              {position.qty > 0 ? 'LONG' : 'SHORT'} {Math.abs(position.qty)} @ {price(position.avgPrice)} · {signed(position.unrealizedPnl)}
+              {position.qty > 0 ? 'לונג' : 'שורט'} {Math.abs(position.qty)} מניות במחיר {price(position.avgPrice)} · {signed(position.unrealizedPnl)}
             </span>
           )}
         </div>

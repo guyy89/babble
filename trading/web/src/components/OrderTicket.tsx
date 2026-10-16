@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { roundTripCost } from '../../../server/src/broker/fees';
 import { api, type OrderRequest } from '../api';
 import { money, price } from '../format';
+import { ORDER_TYPE, SIDE, STATUS } from '../he';
 import type { Account, Position, PublicSettings, Quote } from '../store';
 
 type OrderType = OrderRequest['type'];
@@ -84,9 +85,9 @@ export function OrderTicket({ symbol, quote, position, account, settings, picked
     const r = settings?.risk;
     const held = Math.abs(position?.qty ?? 0) * entry;
     const caps: [number, string][] = [
-      [r?.maxOrderNotional || Infinity, 'max order size'],
-      [r?.maxPositionNotional ? r.maxPositionNotional - held : Infinity, 'max position size'],
-      [account?.buyingPower ?? Infinity, 'buying power'],
+      [r?.maxOrderNotional || Infinity, 'גודל פקודה מקסימלי'],
+      [r?.maxPositionNotional ? r.maxPositionNotional - held : Infinity, 'גודל פוזיציה מקסימלי'],
+      [account?.buyingPower ?? Infinity, 'כוח הקנייה'],
     ];
     let capped: string | undefined;
     for (const [value, label] of caps) {
@@ -94,7 +95,7 @@ export function OrderTicket({ symbol, quote, position, account, settings, picked
       if (maxShares < n) { n = maxShares; capped = label; }
     }
     if (n > 0) setQty(String(n));
-    setResult(capped ? { ok: true, text: `Size limited to ${n} shares by ${capped}` } : undefined);
+    setResult(capped ? { ok: true, text: `הכמות הוגבלה ל-${n} מניות בגלל ${capped}` } : undefined);
   };
 
   const submit = async (side: 'buy' | 'sell') => {
@@ -109,8 +110,8 @@ export function OrderTicket({ symbol, quote, position, account, settings, picked
     try {
       const o = await api.submit(req);
       setResult(o.status === 'rejected'
-        ? { ok: false, text: o.rejectReason ?? 'rejected' }
-        : { ok: true, text: `${side.toUpperCase()} ${o.qty} ${symbol} — ${o.status.replace('_', ' ')}${o.filledQty ? ` @ ${price(o.avgFillPrice)}` : ''}` });
+        ? { ok: false, text: o.rejectReason ?? 'הפקודה נדחתה' }
+        : { ok: true, text: `${SIDE[side]} ${o.qty} ${symbol}: ${STATUS[o.status]}${o.filledQty ? ` במחיר ${price(o.avgFillPrice)}` : ''}` });
     } catch (e) {
       setResult({ ok: false, text: (e as Error).message });
     } finally {
@@ -127,87 +128,87 @@ export function OrderTicket({ symbol, quote, position, account, settings, picked
 
   return (
     <div className="panel ticket">
-      <div className="panel-title">Order — {symbol}</div>
+      <div className="panel-title">פקודה: {symbol}</div>
       <div className="quote-strip">
-        <span>Bid <b className="down">{price(quote?.bid)}</b> × {quote?.bidSize ?? '—'}</span>
-        <span>Ask <b className="up">{price(quote?.ask)}</b> × {quote?.askSize ?? '—'}</span>
+        <span>ביקוש <b className="down">{price(quote?.bid)}</b> × {quote?.bidSize ?? '—'}</span>
+        <span>היצע <b className="up">{price(quote?.ask)}</b> × {quote?.askSize ?? '—'}</span>
       </div>
       {position && position.qty !== 0 && (
-        <div className="muted small">Position: {position.qty} @ {price(position.avgPrice)}</div>
+        <div className="muted small">פוזיציה: {position.qty} מניות במחיר {price(position.avgPrice)}</div>
       )}
 
       <div className="seg">
         {(['market', 'limit', 'stop', 'stop_limit'] as OrderType[]).map((t) => (
-          <button key={t} className={type === t ? 'on' : ''} onClick={() => setType(t)}>{t.replace('_', ' ')}</button>
+          <button key={t} className={type === t ? 'on' : ''} onClick={() => setType(t)}>{ORDER_TYPE[t]}</button>
         ))}
       </div>
 
-      <label>Shares
+      <label>כמות מניות
         <input type="number" min={1} step={1} value={qty} onChange={(e) => setQty(e.target.value)} />
       </label>
       {needsStop && (
-        <label>Stop price
+        <label>מחיר הפעלת סטופ
           <input type="number" step={0.01} value={stop} placeholder={price(quote?.last)} onChange={(e) => setStop(e.target.value)} />
         </label>
       )}
       {needsLimit && (
-        <label>Limit price
+        <label>מחיר לימיט
           <input type="number" step={0.01} value={limit} placeholder={price(mid)} onChange={(e) => setLimit(e.target.value)} />
         </label>
       )}
-      <label>Time in force
+      <label>תוקף הפקודה
         <select value={tif} onChange={(e) => setTif(e.target.value as 'day' | 'gtc')}>
-          <option value="day">DAY</option>
-          <option value="gtc">GTC</option>
+          <option value="day">עד סוף היום</option>
+          <option value="gtc">עד ביטול</option>
         </select>
       </label>
 
       <label className="check">
         <input type="checkbox" checked={useBracket} disabled={stopRequired} onChange={(e) => setBracket(e.target.checked)} />
-        Bracket (TP / SL){stopRequired && <span className="muted small"> — stop required</span>}
+        יעד רווח וסטופ{stopRequired && <span className="muted small"> (סטופ חובה)</span>}
       </label>
       {useBracket && (
         <div className="bracket">
-          <label>Take profit
+          <label>יעד רווח: מחיר למימוש הרווח
             <input type="number" step={0.01} value={tp} onChange={(e) => setTp(e.target.value)} />
           </label>
           <div className="chips">
-            {[10, 25, 50, 100].map((c) => <button key={c} title="long" onClick={() => offset('tp', c, true)}>+{c}¢</button>)}
+            {[10, 25, 50, 100].map((c) => <button key={c} title="לונג" onClick={() => offset('tp', c, true)}>+{c}¢</button>)}
           </div>
-          <label>Stop loss
+          <label>סטופ: מחיר ליציאה בהפסד
             <input type="number" step={0.01} value={sl} onChange={(e) => setSl(e.target.value)} />
           </label>
           <div className="chips">
-            {[10, 25, 50, 100].map((c) => <button key={c} title="long" onClick={() => offset('sl', c, true)}>−{c}¢</button>)}
+            {[10, 25, 50, 100].map((c) => <button key={c} title="לונג" onClick={() => offset('sl', c, true)}>−{c}¢</button>)}
           </div>
           <div className="chips">
-            <button onClick={() => { offset('tp', 50, false); offset('sl', 25, false); }}>Short: TP −50¢ / SL +25¢</button>
+            <button onClick={() => { offset('tp', 50, false); offset('sl', 25, false); }}>לשורט: יעד 50¢ מתחת, סטופ 25¢ מעל</button>
           </div>
           <div className="risk-row">
-            <label>Risk ${stopRequired ? ` (max ${maxRisk})` : ''}
+            <label>סיכון בדולרים{stopRequired ? ` (עד ${maxRisk})` : ''}
               <input type="number" value={riskUsd} onChange={(e) => setRiskUsd(e.target.value)} />
             </label>
-            <button onClick={sizeFromRisk} disabled={!riskPerShare}>Size</button>
+            <button onClick={sizeFromRisk} disabled={!riskPerShare}>חשב כמות</button>
           </div>
         </div>
       )}
 
       <dl className="stats">
-        <dt>Est. value</dt><dd>{entry ? money(q * entry) : '—'}</dd>
-        <dt>Fees (round trip)</dt><dd>{settings?.fees ? money(fees) : '—'}</dd>
-        <dt>Buying power</dt><dd>{money(account?.buyingPower)}</dd>
-        {totalRisk !== undefined && <><dt>Risk incl. fees</dt><dd className="down">{money(totalRisk)}</dd></>}
-        {netReward !== undefined && <><dt>Reward after fees</dt><dd className="up">{money(netReward)}</dd></>}
-        {totalRisk && netReward !== undefined ? <><dt>R:R (net)</dt><dd>1 : {(netReward / totalRisk).toFixed(2)}</dd></> : null}
+        <dt>שווי משוער</dt><dd>{entry ? money(q * entry) : '—'}</dd>
+        <dt>עמלות קנייה ומכירה</dt><dd>{settings?.fees ? money(fees) : '—'}</dd>
+        <dt>כוח קנייה</dt><dd>{money(account?.buyingPower)}</dd>
+        {totalRisk !== undefined && <><dt>סיכון כולל עמלות</dt><dd className="down">{money(totalRisk)}</dd></>}
+        {netReward !== undefined && <><dt>רווח אחרי עמלות</dt><dd className="up">{money(netReward)}</dd></>}
+        {totalRisk && netReward !== undefined ? <><dt>יחס סיכון לרווח</dt><dd>1 : {(netReward / totalRisk).toFixed(2)}</dd></> : null}
       </dl>
-      {overLimit && <div className="result err">Risk to stop {money(priceRisk)} is over the {money(maxRisk)} limit — press Size.</div>}
+      {overLimit && <div className="result err">הסיכון עד הסטופ ({money(priceRisk)}) גבוה מהמגבלה של {money(maxRisk)}. לחץ על "חשב כמות".</div>}
 
       <div className="actions">
-        <button className="buy" disabled={busy || q <= 0} onClick={() => submit('buy')}>Buy</button>
-        <button className="sell" disabled={busy || q <= 0} onClick={() => submit('sell')}>Sell</button>
+        <button className="buy" disabled={busy || q <= 0} onClick={() => submit('buy')}>קנייה</button>
+        <button className="sell" disabled={busy || q <= 0} onClick={() => submit('sell')}>מכירה</button>
       </div>
       {result && <div className={`result ${result.ok ? 'ok' : 'err'}`}>{result.text}</div>}
-      <div className="muted small">Tip: click the chart to set a price.</div>
+      <div className="muted small">טיפ: לחיצה על הגרף ממלאת את המחיר.</div>
     </div>
   );
 }

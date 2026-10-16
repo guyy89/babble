@@ -40,11 +40,11 @@ export function createApiServer(svc: TradingService, settings: PublicSettings): 
   });
   app.post('/api/account/reset', async (_req, res) => {
     const resettable = broker as typeof broker & { reset?: () => Promise<void> };
-    if (!resettable.reset) throw new BrokerError('only a paper account can be reset', 409);
+    if (!resettable.reset) throw new BrokerError('אפשר לאפס רק חשבון מדומה', 409);
     await resettable.reset();
     const msg = await snapshot();
     for (const client of wss.clients) if (client.readyState === WebSocket.OPEN) client.send(msg);
-    svc.notice('info', 'Paper account reset');
+    svc.notice('info', 'החשבון המדומה אופס');
     res.json(await svc.account());
   });
   app.get('/api/positions', async (_req, res) => {

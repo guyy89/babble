@@ -6,6 +6,9 @@ import type { MarketDataFeed } from './market/feed.js';
 import { RiskManager } from './risk/riskManager.js';
 import type { Account, Order, OrderRequest, ServerEvent } from './types.js';
 
+const SIDE_HE = { buy: 'קנייה', sell: 'מכירה' } as const;
+const sideHe = (s: unknown) => SIDE_HE[s as keyof typeof SIDE_HE] ?? String(s);
+
 /**
  * Ties market data, broker and risk together and exposes a single event stream
  * ('event' → ServerEvent) for the API layer.
@@ -32,7 +35,7 @@ export class TradingService extends EventEmitter {
     this.feed.on('bar', (b) => this.send({ type: 'bar', data: b }));
     this.broker.on('order', (o: Order) => {
       this.send({ type: 'order', data: o });
-      if (o.status === 'rejected') this.notice('warn', `${o.side.toUpperCase()} ${o.qty} ${o.symbol} rejected: ${o.rejectReason}`);
+      if (o.status === 'rejected') this.notice('warn', `${sideHe(o.side)} ${o.qty} ${o.symbol} נדחתה: ${o.rejectReason}`);
     });
     this.broker.on('fill', (f) => this.send({ type: 'fill', data: f }));
     this.broker.on('account', () => (this.accountDirty = true));
@@ -54,11 +57,11 @@ export class TradingService extends EventEmitter {
     const acct = await this.broker.getAccount();
     if (this.risk.dailyLossBreached(acct)) {
       acct.tradingBlocked = true;
-      acct.blockReason = `Daily loss limit ($${this.riskCfg.maxDailyLoss}) reached — closing orders only`;
+      acct.blockReason = `הגעת למגבלת ההפסד היומי ($${this.riskCfg.maxDailyLoss}). מותרות רק פקודות סגירה`;
     }
     if (acct.marginCall) {
       acct.tradingBlocked = true;
-      acct.blockReason = `Margin deficit: equity $${acct.equity.toFixed(2)} is below the $${acct.maintenanceRequirement.toFixed(2)} requirement — reduce positions`;
+      acct.blockReason = `חוסר בביטחונות: ההון ($${acct.equity.toFixed(2)}) נמוך מהדרישה ($${acct.maintenanceRequirement.toFixed(2)}). צריך להקטין פוזיציות`;
     }
     return acct;
   }
@@ -74,10 +77,10 @@ export class TradingService extends EventEmitter {
       const now = Date.now();
       const rejected: Order = {
         id: `risk-${now}`, symbol, side: req.side, qty: Number(req.qty), type: req.type, tif: req.tif ?? 'day',
-        limitPrice: req.limitPrice, stopPrice: req.stopPrice, status: 'rejected', rejectReason: `risk: ${reason}`,
+        limitPrice: req.limitPrice, stopPrice: req.stopPrice, status: 'rejected', rejectReason: `ניהול סיכונים: ${reason}`,
         filledQty: 0, avgFillPrice: 0, createdAt: now, updatedAt: now,
       };
-      this.notice('warn', `${req.side?.toUpperCase()} ${req.qty} ${symbol} blocked by risk: ${reason}`);
+      this.notice('warn', `${sideHe(req.side)} ${req.qty} ${symbol} נחסמה בגלל ניהול סיכונים: ${reason}`);
       return rejected;
     }
     return this.broker.submitOrder({ ...req, symbol });
@@ -102,7 +105,7 @@ export class TradingService extends EventEmitter {
       this.flattenedForDate !== clock.nyDate
     ) {
       this.flattenedForDate = clock.nyDate;
-      this.notice('warn', `Auto-flatten: closing all positions ${cfg.flattenMinutesBeforeClose} min before the close`);
+      this.notice('warn', `סגירה אוטומטית: כל הפוזיציות נסגרות ${cfg.flattenMinutesBeforeClose} דקות לפני סוף המסחר`);
       await this.broker.closeAll();
     }
 

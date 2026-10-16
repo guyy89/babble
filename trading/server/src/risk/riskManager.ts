@@ -29,7 +29,7 @@ export class RiskManager {
     if (opening === 0) return null;
 
     if (this.dailyLossBreached(ctx.account)) {
-      return `daily loss limit of $${this.cfg.maxDailyLoss} reached — only closing orders are allowed today`;
+      return `הגעת למגבלת ההפסד היומי ($${this.cfg.maxDailyLoss}). היום מותרות רק פקודות סגירה`;
     }
     const price = req.limitPrice ?? req.stopPrice ?? (req.side === 'buy' ? ctx.quote?.ask : ctx.quote?.bid);
     if (!price) return null;
@@ -37,22 +37,22 @@ export class RiskManager {
     if (this.cfg.maxRiskPerTrade > 0) {
       const stop = req.stopLoss?.stopPrice;
       if (stop === undefined) {
-        return `a stop-loss is required on every new position (max risk $${this.cfg.maxRiskPerTrade} per trade)`;
+        return `חובה סטופ בכל פוזיציה חדשה (סיכון של עד $${this.cfg.maxRiskPerTrade} לעסקה)`;
       }
       const risk = qty * Math.abs(price - Number(stop));
       if (risk > this.cfg.maxRiskPerTrade + 1e-6) {
         const maxQty = Math.floor(this.cfg.maxRiskPerTrade / Math.abs(price - Number(stop)));
-        return `risk to stop $${risk.toFixed(2)} exceeds max $${this.cfg.maxRiskPerTrade} per trade (max ${maxQty} shares at this stop)`;
+        return `הסיכון עד הסטופ ($${risk.toFixed(2)}) גבוה מהמגבלה של $${this.cfg.maxRiskPerTrade} לעסקה (עם הסטופ הזה: עד ${maxQty} מניות)`;
       }
     }
 
     const orderNotional = qty * price;
     if (this.cfg.maxOrderNotional > 0 && orderNotional > this.cfg.maxOrderNotional) {
-      return `order value $${orderNotional.toFixed(0)} exceeds max order size $${this.cfg.maxOrderNotional}`;
+      return `שווי הפקודה ($${orderNotional.toFixed(0)}) גבוה מגודל פקודה מקסימלי של $${this.cfg.maxOrderNotional}`;
     }
     const resulting = Math.abs(pos + delta) * price;
     if (this.cfg.maxPositionNotional > 0 && resulting > this.cfg.maxPositionNotional) {
-      return `resulting position $${resulting.toFixed(0)} exceeds max position size $${this.cfg.maxPositionNotional}`;
+      return `שווי הפוזיציה אחרי הפקודה ($${resulting.toFixed(0)}) גבוה מגודל פוזיציה מקסימלי של $${this.cfg.maxPositionNotional}`;
     }
     return null;
   }

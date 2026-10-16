@@ -12,6 +12,8 @@ npm install
 npm run dev               # שרת על :4000, ממשק על http://localhost:5173
 ```
 
+ב-Windows אפשר גם ללחוץ פעמיים על `start-windows.cmd`. הוא מפעיל את השרת ואת הממשק ופותח את הדפדפן.
+
 הרצה כמו בפרודקשן (השרת מגיש גם את הממשק הבנוי): `npm run build && npm start` ואז http://localhost:4000
 
 בדיקות: `npm test`
