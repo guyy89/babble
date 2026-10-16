@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "workspaces": ["server", "web"],
   "scripts": {
-    "dev": "npm run dev -w server & npm run dev -w web",
+    "dev": "node scripts/dev.mjs",
     "build": "npm run build -w web && npm run typecheck -w server",
     "start": "npm start -w server",
     "test": "npm test -w server",

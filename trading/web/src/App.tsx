@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { api } from './api';
 import { Blotter } from './components/Blotter';
-import { Chart } from './components/Chart';
+import { Chart, TIMEFRAMES, type Timeframe } from './components/Chart';
 import { OrderTicket } from './components/OrderTicket';
 import { money, pnlClass, price, signed } from './format';
 import { useTradingStore } from './store';
@@ -10,6 +10,8 @@ export function App() {
   const { state, dismiss } = useTradingStore();
   const [selected, setSelected] = useState<string>();
   const [picked, setPicked] = useState<{ value: number; seq: number }>();
+  const [timeframe, setTimeframe] = useState<Timeframe>(1);
+  const [atrValue, setAtrValue] = useState<number | null>(null);
 
   const symbol = selected ?? state.symbols[0];
   const orders = useMemo(() => Object.values(state.orders).sort((a, b) => b.createdAt - a.createdAt), [state.orders]);
@@ -82,7 +84,16 @@ export function App() {
 
       <main className="panel chart-panel">
         <div className="panel-title">
-          {symbol} <span className="muted">1m · VWAP</span>
+          {symbol}
+          <span className="tf">
+            {TIMEFRAMES.map((tf) => (
+              <button key={tf} className={tf === timeframe ? 'sm on' : 'sm'} onClick={() => setTimeframe(tf)}>{tf}m</button>
+            ))}
+          </span>
+          <span className="muted small">
+            <span style={{ color: '#f0b90b' }}>VWAP</span> · <span style={{ color: '#4c8dff' }}>EMA 9</span> ·{' '}
+            <span style={{ color: '#c77dff' }}>EMA 20</span> · RSI 14 · ATR 14: {atrValue === null ? '—' : price(atrValue)}
+          </span>
           {position && position.qty !== 0 && (
             <span className={`pos-pill ${pnlClass(position.unrealizedPnl)}`}>
               {position.qty > 0 ? 'LONG' : 'SHORT'} {Math.abs(position.qty)} @ {price(position.avgPrice)} · {signed(position.unrealizedPnl)}
@@ -90,7 +101,7 @@ export function App() {
           )}
         </div>
         {symbol && (
-          <Chart symbol={symbol} orders={symbolOrders} position={position}
+          <Chart symbol={symbol} timeframe={timeframe} orders={symbolOrders} position={position} onAtr={setAtrValue}
             onPickPrice={(value) => setPicked((p) => ({ value, seq: (p?.seq ?? 0) + 1 }))} />
         )}
       </main>

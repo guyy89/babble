@@ -4,6 +4,7 @@ import {
   type IChartApi, type IPriceLine, type ISeriesApi, type Time, type UTCTimestamp,
 } from 'lightweight-charts';
 import { api } from '../api';
+import { aggregate, atr, ema, rsi } from '../indicators';
 import { onBar, type Bar, type Order, type Position } from '../store';
 
 const nyTime = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
@@ -16,44 +17,43 @@ const toVolume = (b: Bar) => ({
 });
 
 /** Session VWAP, reset at each New York trading day. */
-class Vwap {
-  private day = '';
-  private pv = 0;
-  private vol = 0;
-  private lastBar?: Bar;
-
-  push(b: Bar): number {
-    const day = nyDay.format(new Date(b.t));
-    if (day !== this.day) {
-      this.day = day; this.pv = 0; this.vol = 0; this.lastBar = undefined;
-    }
-    // Re-applying an update of the same bar: remove its previous contribution first.
-    if (this.lastBar && this.lastBar.t === b.t) {
-      this.pv -= typical(this.lastBar) * this.lastBar.v;
-      this.vol -= this.lastBar.v;
-    }
-    this.pv += typical(b) * b.v;
-    this.vol += b.v;
-    this.lastBar = { ...b };
-    return this.vol > 0 ? this.pv / this.vol : b.c;
-  }
+function vwap(bars: Bar[]): number[] {
+  let day = '';
+  let pv = 0;
+  let vol = 0;
+  return bars.map((b) => {
+    const d = nyDay.format(new Date(b.t));
+    if (d !== day) { day = d; pv = 0; vol = 0; }
+    pv += ((b.h + b.l + b.c) / 3) * b.v;
+    vol += b.v;
+    return vol > 0 ? pv / vol : b.c;
+  });
 }
-const typical = (b: Bar) => (b.h + b.l + b.c) / 3;
+
+const line = (bars: Bar[], values: (number | null)[]) =>
+  bars.flatMap((b, i) => (values[i] === null ? [] : [{ time: (b.t / 1000) as UTCTimestamp, value: values[i]! }]));
+
+export const TIMEFRAMES = [1, 5, 15] as const;
+export type Timeframe = (typeof TIMEFRAMES)[number];
 
 interface Props {
   symbol: string;
+  timeframe: Timeframe;
   orders: Order[];
   position?: Position;
   onPickPrice: (price: number) => void;
+  onAtr: (value: number | null) => void;
 }
 
-export function Chart({ symbol, orders, position, onPickPrice }: Props) {
+export function Chart({ symbol, timeframe, orders, position, onPickPrice, onAtr }: Props) {
   const el = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi>(undefined);
   const candlesRef = useRef<ISeriesApi<'Candlestick'>>(undefined);
   const linesRef = useRef<IPriceLine[]>([]);
   const pickRef = useRef(onPickPrice);
   pickRef.current = onPickPrice;
+  const atrRef = useRef(onAtr);
+  atrRef.current = onAtr;
 
   useEffect(() => {
     const chart = createChart(el.current!, {
@@ -70,9 +70,17 @@ export function Chart({ symbol, orders, position, onPickPrice }: Props) {
     });
     const volume = chart.addSeries(HistogramSeries, { priceFormat: { type: 'volume' }, priceScaleId: '' });
     volume.priceScale().applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
-    const vwapSeries = chart.addSeries(LineSeries, {
-      color: '#f0b90b', lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
-    });
+    const overlay = { lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false } as const;
+    const vwapSeries = chart.addSeries(LineSeries, { ...overlay, color: '#f0b90b' });
+    const ema9Series = chart.addSeries(LineSeries, { ...overlay, color: '#4c8dff' });
+    const ema20Series = chart.addSeries(LineSeries, { ...overlay, color: '#c77dff' });
+    // RSI in its own pane below the price, with the usual 70/30 bands.
+    const rsiSeries = chart.addSeries(LineSeries, { ...overlay, color: '#8b98a5', lastValueVisible: true }, 1);
+    rsiSeries.createPriceLine({ price: 70, color: '#ef5350', lineWidth: 1, lineStyle: LineStyle.Dotted, axisLabelVisible: false, title: '' });
+    rsiSeries.createPriceLine({ price: 30, color: '#26a69a', lineWidth: 1, lineStyle: LineStyle.Dotted, axisLabelVisible: false, title: '' });
+    rsiSeries.priceScale().applyOptions({ autoScale: false, scaleMargins: { top: 0.1, bottom: 0.1 } });
+    rsiSeries.applyOptions({ autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }) });
+    chart.panes()[1]?.setHeight(90);
     chartRef.current = chart;
     candlesRef.current = candles;
 
@@ -83,22 +91,46 @@ export function Chart({ symbol, orders, position, onPickPrice }: Props) {
     });
 
     let cancelled = false;
-    const vwap = new Vwap();
-    let lastT = 0;
+    let loaded = false;
+    let minuteBars: Bar[] = [];
+
+    // Indicators are recomputed from the full history on every update (a few thousand bars at most),
+    // then either drawn whole (initial load) or only the last point is pushed (live updates).
+    const render = (full: boolean) => {
+      const bars = aggregate(minuteBars, timeframe);
+      if (!bars.length) return;
+      const series: [ISeriesApi<'Line'>, { time: UTCTimestamp; value: number }[]][] = [
+        [vwapSeries, line(bars, vwap(bars))],
+        [ema9Series, line(bars, ema(bars, 9))],
+        [ema20Series, line(bars, ema(bars, 20))],
+        [rsiSeries, line(bars, rsi(bars, 14))],
+      ];
+      if (full) {
+        candles.setData(bars.map(toCandle));
+        volume.setData(bars.map(toVolume));
+        for (const [s, data] of series) s.setData(data);
+        chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, bars.length - 120), to: bars.length + 5 });
+      } else {
+        candles.update(toCandle(bars.at(-1)!));
+        volume.update(toVolume(bars.at(-1)!));
+        for (const [s, data] of series) if (data.length) s.update(data.at(-1)!);
+      }
+      atrRef.current(atr(bars, 14).at(-1) ?? null);
+    };
+
     api.bars(symbol).then((bars) => {
       if (cancelled) return;
-      candles.setData(bars.map(toCandle));
-      volume.setData(bars.map(toVolume));
-      vwapSeries.setData(bars.map((b) => ({ time: (b.t / 1000) as UTCTimestamp, value: vwap.push(b) })));
-      lastT = bars.at(-1)?.t ?? 0;
-      chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, bars.length - 120), to: bars.length + 5 });
+      minuteBars = bars;
+      loaded = true;
+      render(true);
     });
     const off = onBar((b) => {
-      if (b.symbol !== symbol || b.t < lastT) return;
-      lastT = b.t;
-      candles.update(toCandle(b));
-      volume.update(toVolume(b));
-      vwapSeries.update({ time: (b.t / 1000) as UTCTimestamp, value: vwap.push(b) });
+      if (!loaded || b.symbol !== symbol) return;
+      const last = minuteBars.at(-1);
+      if (last && b.t < last.t) return;
+      if (last && b.t === last.t) minuteBars[minuteBars.length - 1] = b;
+      else minuteBars.push(b);
+      render(false);
     });
 
     return () => {
@@ -106,8 +138,9 @@ export function Chart({ symbol, orders, position, onPickPrice }: Props) {
       off();
       chart.remove();
       linesRef.current = [];
+      atrRef.current(null);
     };
-  }, [symbol]);
+  }, [symbol, timeframe]);
 
   // Working orders and the average entry price as horizontal lines.
   useEffect(() => {
@@ -130,7 +163,7 @@ export function Chart({ symbol, orders, position, onPickPrice }: Props) {
         title: `${o.parentId ? (o.type === 'stop' ? 'SL' : 'TP') : o.type.toUpperCase()} ${o.side} ${o.qty - o.filledQty}`,
       }));
     }
-  }, [orders, position, symbol]);
+  }, [orders, position, symbol, timeframe]);
 
   return <div className="chart" ref={el} />;
 }

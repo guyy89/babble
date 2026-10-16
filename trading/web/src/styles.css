@@ -142,3 +142,6 @@ tbody tr.sel { background: #14202e; }
   }
   .acct { flex-wrap: wrap; gap: 10px; }
 }
+
+.tf { display: flex; gap: 4px; }
+.tf button.on { background: #1d3557; border-color: var(--accent); }
