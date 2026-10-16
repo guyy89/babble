@@ -2,19 +2,26 @@ import { useState } from 'react';
 import { api } from '../api';
 import { money, pnlClass, price, signed, time } from '../format';
 import { orderKind, SIDE, STATUS } from '../he';
-import type { Fill, Order, Position } from '../store';
+import type { Fill, Order, Position, Quote } from '../store';
+import { Journal } from './Journal';
+import { News } from './News';
+import { Tape } from './Tape';
 
 interface Props {
   positions: Position[];
   orders: Order[];
   fills: Fill[];
   onSelect: (symbol: string) => void;
+  symbol?: string;
+  quote?: Quote;
 }
+
+type Tab = 'positions' | 'open' | 'orders' | 'fills' | 'journal' | 'tape' | 'news';
 
 const OPEN = new Set(['new', 'partially_filled', 'held']);
 
-export function Blotter({ positions, orders, fills, onSelect }: Props) {
-  const [tab, setTab] = useState<'positions' | 'open' | 'orders' | 'fills'>('positions');
+export function Blotter({ positions, orders, fills, onSelect, symbol, quote }: Props) {
+  const [tab, setTab] = useState<Tab>('positions');
   const open = orders.filter((o) => OPEN.has(o.status));
   const openPositions = positions.filter((p) => p.qty !== 0);
 
@@ -25,6 +32,9 @@ export function Blotter({ positions, orders, fills, onSelect }: Props) {
         <button className={tab === 'open' ? 'on' : ''} onClick={() => setTab('open')}>פקודות פתוחות ({open.length})</button>
         <button className={tab === 'orders' ? 'on' : ''} onClick={() => setTab('orders')}>כל הפקודות</button>
         <button className={tab === 'fills' ? 'on' : ''} onClick={() => setTab('fills')}>ביצועים</button>
+        <button className={tab === 'journal' ? 'on' : ''} onClick={() => setTab('journal')}>יומן מסחר</button>
+        <button className={tab === 'tape' ? 'on' : ''} onClick={() => setTab('tape')}>סרט עסקאות</button>
+        <button className={tab === 'news' ? 'on' : ''} onClick={() => setTab('news')}>חדשות</button>
         <span className="spacer" />
         {tab === 'open' && open.length > 0 && <button className="danger" onClick={() => api.cancelAll()}>בטל הכל</button>}
       </div>
@@ -52,6 +62,9 @@ export function Blotter({ positions, orders, fills, onSelect }: Props) {
         {(tab === 'open' || tab === 'orders') && (
           <OrdersTable orders={tab === 'open' ? open : orders} onSelect={onSelect} />
         )}
+        {tab === 'journal' && <Journal refreshKey={fills[0]?.id ?? ''} onSelect={onSelect} />}
+        {tab === 'tape' && <Tape symbol={symbol} quote={quote} />}
+        {tab === 'news' && <News symbol={symbol} />}
         {tab === 'fills' && (
           <table>
             <thead><tr><th>שעה</th><th>מניה</th><th>צד</th><th>כמות</th><th>מחיר</th><th>עמלה</th><th>אגרות רגולציה</th></tr></thead>

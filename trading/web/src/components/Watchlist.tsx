@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, type Movers, type SymbolInfo } from '../api';
 import { price } from '../format';
 import type { Position, Quote } from '../store';
+import { Scanner } from './Scanner';
 
 interface Props {
   symbols: string[];
@@ -16,7 +17,7 @@ interface Props {
 const pct = (n: number) => `⁦${n > 0 ? '+' : ''}${n.toFixed(2)}%⁩`;
 
 export function Watchlist({ symbols, names, quotes, positions, selected, onSelect, onError }: Props) {
-  const [tab, setTab] = useState<'watch' | 'movers'>('watch');
+  const [tab, setTab] = useState<'watch' | 'movers' | 'scan'>('watch');
 
   // Adding subscribes the symbol on the server; select it once it's in the list.
   const open = async (symbol: string) => {
@@ -36,6 +37,7 @@ export function Watchlist({ symbols, names, quotes, positions, selected, onSelec
       <div className="tabs">
         <button className={tab === 'watch' ? 'on' : ''} onClick={() => setTab('watch')}>רשימת מעקב ({symbols.length})</button>
         <button className={tab === 'movers' ? 'on' : ''} onClick={() => setTab('movers')}>זזות היום</button>
+        <button className={tab === 'scan' ? 'on' : ''} onClick={() => setTab('scan')}>סורק</button>
       </div>
       <SymbolSearch onPick={open} />
       {tab === 'watch' ? (
@@ -66,8 +68,10 @@ export function Watchlist({ symbols, names, quotes, positions, selected, onSelec
             </tbody>
           </table>
         </div>
-      ) : (
+      ) : tab === 'movers' ? (
         <MoversView onPick={open} />
+      ) : (
+        <Scanner onPick={open} />
       )}
     </aside>
   );
@@ -98,6 +102,7 @@ function SymbolSearch({ onPick }: { onPick: (symbol: string) => void }) {
   return (
     <div className="search">
       <input
+        id="symbol-search"
         value={q}
         placeholder="חיפוש מניה: סימול או שם חברה"
         onChange={(e) => setQ(e.target.value)}

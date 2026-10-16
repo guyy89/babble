@@ -1,35 +1,114 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api';
 import { Blotter } from './components/Blotter';
-import { Chart, TIMEFRAMES, type Timeframe } from './components/Chart';
-import { OrderTicket } from './components/OrderTicket';
+import { TIMEFRAMES, type Timeframe } from './components/Chart';
+import { ChartArea } from './components/ChartArea';
+import { OrderTicket, typingInField } from './components/OrderTicket';
 import { Watchlist } from './components/Watchlist';
 import { money, pnlClass, price, signed } from './format';
+import { DEFAULT_INDICATORS, usePref, type DrawnLines, type IndicatorConfig, type PriceAlert } from './prefs';
 import { useTradingStore } from './store';
+
+const OPEN = ['new', 'partially_filled', 'held'];
 
 export function App() {
   const { state, dismiss } = useTradingStore();
-  const [selected, setSelected] = useState<string>();
   const [picked, setPicked] = useState<{ value: number; seq: number }>();
-  const [timeframe, setTimeframe] = useState<Timeframe>(1);
-  const [atrValue, setAtrValue] = useState<number | null>(null);
+  const [localNotice, setLocalNotice] = useState<{ message: string; ts: number; level: 'info' | 'warn' }>();
+  const [help, setHelp] = useState(false);
+  const [atr, setAtr] = useState<number | null>(null);
 
-  const [localError, setLocalError] = useState<{ message: string; ts: number }>();
+  const [timeframe, setTimeframe] = usePref<{ tf: Timeframe }>('chart.timeframe', { tf: 1 });
+  const [indicators, setIndicators] = usePref<IndicatorConfig>('chart.indicators', DEFAULT_INDICATORS);
+  const [lines, setLines] = usePref<DrawnLines>('chart.lines', {});
+  const [alerts, setAlerts] = usePref<PriceAlert[]>('alerts', []);
+  const [layout, setLayout] = usePref<{ mode: 'single' | 'grid'; cells: string[]; active: number }>('chart.layout', {
+    mode: 'single', cells: [], active: 0,
+  });
 
-  // A removed symbol can't stay selected.
-  const symbol = selected && state.symbols.includes(selected) ? selected : state.symbols[0];
-  const orders = useMemo(() => Object.values(state.orders).sort((a, b) => b.createdAt - a.createdAt), [state.orders]);
-  const symbolOrders = useMemo(
-    () => orders.filter((o) => o.symbol === symbol && ['new', 'partially_filled', 'held'].includes(o.status)),
-    [orders, symbol],
-  );
-  const position = state.positions.find((p) => p.symbol === symbol);
-  const a = state.account;
-
-  const resetAccount = () => {
-    if (confirm('לאפס את החשבון המדומה? כל הפוזיציות, הפקודות וההיסטוריה יימחקו.')) api.resetAccount();
+  // Chart cells hold symbols; anything no longer on the watchlist falls back to the first watchlist symbol.
+  const cells = [0, 1, 2, 3].map((i) => {
+    const s = layout.cells[i];
+    return s && state.symbols.includes(s) ? s : state.symbols[i];
+  });
+  const symbol = cells[layout.active] ?? state.symbols[0];
+  const selectSymbol = (s: string) => {
+    const next = [...cells];
+    next[layout.active] = s;
+    setLayout({ ...layout, cells: next as string[] });
   };
 
+  const orders = useMemo(() => Object.values(state.orders).sort((a, b) => b.createdAt - a.createdAt), [state.orders]);
+  const openOrders = useMemo(() => orders.filter((o) => OPEN.includes(o.status)), [orders]);
+  const position = state.positions.find((p) => p.symbol === symbol);
+  const a = state.account;
+  const notify = (message: string, level: 'info' | 'warn' = 'warn') => setLocalNotice({ message, ts: Date.now(), level });
+  useEffect(() => {
+    if (!localNotice) return;
+    const t = setTimeout(() => setLocalNotice(undefined), 8000);
+    return () => clearTimeout(t);
+  }, [localNotice]);
+
+  // ---------------------------------------------------------------- price alerts
+
+  const addAlert = (s: string, value: number) => {
+    const last = state.quotes[s]?.last;
+    if (!last) return notify(`אין מחיר עדכני ל-${s}`);
+    const alert: PriceAlert = { id: crypto.randomUUID(), symbol: s, price: value, dir: value >= last ? 'above' : 'below', createdAt: Date.now() };
+    setAlerts([...alerts, alert]);
+    notify(`נקבעה התראה: ${s} ${alert.dir === 'above' ? 'עולה מעל' : 'יורדת מתחת ל'} ${price(value)}`, 'info');
+    try {
+      if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission();
+    } catch { /* notifications unavailable */ }
+  };
+
+  const alertsRef = useRef(alerts);
+  alertsRef.current = alerts;
+  useEffect(() => {
+    const fired = alertsRef.current.filter((al) => {
+      const last = state.quotes[al.symbol]?.last;
+      return last !== undefined && (al.dir === 'above' ? last >= al.price : last <= al.price);
+    });
+    if (!fired.length) return;
+    setAlerts(alertsRef.current.filter((al) => !fired.includes(al)));
+    for (const al of fired) {
+      const msg = `התראה: ${al.symbol} ${al.dir === 'above' ? 'עלתה מעל' : 'ירדה מתחת ל'} ${price(al.price)} (עכשיו ${price(state.quotes[al.symbol]?.last)})`;
+      notify(msg, 'warn');
+      beep();
+      try {
+        if ('Notification' in window && Notification.permission === 'granted') new Notification('מסחר יומי', { body: msg });
+      } catch { /* notifications unavailable */ }
+    }
+  }, [state.quotes]);
+
+  // ---------------------------------------------------------------- app-level shortcuts
+
+  const keys = useRef<(e: KeyboardEvent) => void>(() => {});
+  keys.current = (e) => {
+    if (e.key === 'Escape') return setHelp(false);
+    if (typingInField(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === '?' || (e.code === 'Slash' && e.shiftKey)) { e.preventDefault(); return setHelp((h) => !h); }
+    if (e.code === 'Slash') { e.preventDefault(); return document.getElementById('symbol-search')?.focus(); }
+    if (e.code === 'ArrowDown' || e.code === 'ArrowUp') {
+      e.preventDefault();
+      const i = state.symbols.indexOf(symbol);
+      const next = state.symbols[(i + (e.code === 'ArrowDown' ? 1 : -1) + state.symbols.length) % state.symbols.length];
+      if (next) selectSymbol(next);
+      return;
+    }
+    const digit = /^Digit([1-4])$/.exec(e.code);
+    if (digit) { e.preventDefault(); setTimeframe({ tf: TIMEFRAMES[Number(digit[1]) - 1] }); return; }
+    if (e.code === 'KeyG') { e.preventDefault(); setLayout({ ...layout, mode: layout.mode === 'grid' ? 'single' : 'grid' }); }
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => keys.current(e);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const resetAccount = () => {
+    if (confirm('לאפס את החשבון המדומה? כל הפוזיציות, הפקודות וההיסטוריה (כולל היומן) יימחקו.')) api.resetAccount();
+  };
   const flattenAll = () => {
     if (confirm('לבטל את כל הפקודות ולסגור את כל הפוזיציות במחיר השוק?')) api.flattenAll();
   };
@@ -59,6 +138,7 @@ export function App() {
             )}
           </div>
         )}
+        <button onClick={() => setHelp(true)} title="מקש ?">קיצורי מקלדת</button>
         {state.broker === 'paper' && <button onClick={resetAccount}>איפוס חשבון</button>}
         <button className="danger" onClick={flattenAll}>סגור הכל</button>
       </header>
@@ -66,47 +146,40 @@ export function App() {
       {a?.tradingBlocked && <div className="banner">{a.blockReason}</div>}
 
       <Watchlist symbols={state.symbols} names={state.names} quotes={state.quotes} positions={state.positions}
-        selected={symbol} onSelect={setSelected} onError={(message) => setLocalError({ message, ts: Date.now() })} />
+        selected={symbol} onSelect={selectSymbol} onError={(m) => notify(m)} />
 
-      <main className="panel chart-panel">
-        <div className="panel-title">
-          <span>{symbol} <span className="co-title">{symbol && state.names[symbol]}</span></span>
-          <span className="tf">
-            {TIMEFRAMES.map((tf) => (
-              <button key={tf} className={tf === timeframe ? 'sm on' : 'sm'} onClick={() => setTimeframe(tf)}>{tf} דק׳</button>
-            ))}
-          </span>
-          <span className="muted small">
-            <span style={{ color: '#f0b90b' }}>ממוצע משוקלל נפח</span> · <span style={{ color: '#4c8dff' }}>ממוצע נע 9</span> ·{' '}
-            <span style={{ color: '#c77dff' }}>ממוצע נע 20</span> · חוזק יחסי 14 (למטה) · תנודתיות ממוצעת לנר: {atrValue === null ? '—' : price(atrValue)}
-          </span>
-          {position && position.qty !== 0 && (
-            <span className={`pos-pill ${pnlClass(position.unrealizedPnl)}`}>
-              {position.qty > 0 ? 'לונג' : 'שורט'} {Math.abs(position.qty)} מניות במחיר {price(position.avgPrice)} · {signed(position.unrealizedPnl)}
-            </span>
-          )}
-        </div>
-        {symbol && (
-          <Chart symbol={symbol} timeframe={timeframe} orders={symbolOrders} position={position} onAtr={setAtrValue}
-            onPickPrice={(value) => setPicked((p) => ({ value, seq: (p?.seq ?? 0) + 1 }))} />
-        )}
-      </main>
+      <ChartArea
+        layout={layout.mode} setLayout={(mode) => setLayout({ ...layout, mode, cells: cells as string[] })}
+        cells={cells} activeCell={layout.active}
+        onActivate={(i) => setLayout({ ...layout, active: i, cells: cells as string[] })}
+        names={state.names} quotes={state.quotes}
+        timeframe={timeframe.tf} setTimeframe={(tf) => setTimeframe({ tf })}
+        indicators={indicators} setIndicators={setIndicators}
+        openOrders={openOrders} positions={state.positions}
+        lines={lines} setLines={setLines}
+        alerts={alerts} addAlert={addAlert} removeAlert={(id) => setAlerts(alerts.filter((x) => x.id !== id))}
+        onPickPrice={(value) => setPicked((p) => ({ value, seq: (p?.seq ?? 0) + 1 }))}
+        onAtrChange={setAtr}
+      />
 
       {symbol && (
         <OrderTicket symbol={symbol} companyName={state.names[symbol]} quote={state.quotes[symbol]} position={position} account={a}
-          settings={state.settings} pickedPrice={picked} />
+          settings={state.settings} pickedPrice={picked} openOrders={openOrders.filter((o) => o.symbol === symbol)} atr={atr} />
       )}
 
-      <Blotter positions={state.positions} orders={orders} fills={state.fills} onSelect={setSelected} />
+      <Blotter positions={state.positions} orders={orders} fills={state.fills} onSelect={selectSymbol}
+        symbol={symbol} quote={symbol ? state.quotes[symbol] : undefined} />
 
       <div className="toasts">
-        {localError && (
-          <div className="toast warn" onClick={() => setLocalError(undefined)}>{localError.message}</div>
+        {localNotice && (
+          <div key={localNotice.ts} className={`toast ${localNotice.level}`} onClick={() => setLocalNotice(undefined)}>{localNotice.message}</div>
         )}
         {state.notices.map((n) => (
           <div key={n.ts} className={`toast ${n.level}`} onClick={() => dismiss(n.ts)}>{n.message}</div>
         ))}
       </div>
+
+      {help && <Help onClose={() => setHelp(false)} />}
     </div>
   );
 }
@@ -118,4 +191,56 @@ function Stat({ label, value, cls = '' }: { label: string; value: string; cls?: 
       <b className={cls}>{value}</b>
     </div>
   );
+}
+
+const SHORTCUTS: [string, string][] = [
+  ['B', 'קנייה לפי ההגדרות בכרטיס הפקודה'],
+  ['S', 'מכירה (או שורט) לפי ההגדרות בכרטיס הפקודה'],
+  ['Q', 'חישוב כמות לפי הסיכון והסטופ'],
+  ['X', 'סגירת הפוזיציה במניה הנוכחית'],
+  ['C', 'ביטול הפקודות הפתוחות במניה הנוכחית'],
+  ['E', 'הזזת הסטופ לנקודת הכניסה'],
+  ['R', 'היפוך הפוזיציה'],
+  ['↑ / ↓', 'מעבר למניה הקודמת / הבאה ברשימה'],
+  ['1 2 3 4', 'אורך נר: דקה, 5 דקות, 15 דקות, יומי'],
+  ['G', 'מעבר בין גרף אחד לארבעה גרפים'],
+  ['/', 'מעבר לתיבת החיפוש'],
+  ['?', 'הצגת החלון הזה'],
+];
+
+function Help({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="dialog" onClick={(e) => e.stopPropagation()}>
+        <div className="popover-title">קיצורי מקלדת <button className="sm ghost" onClick={onClose}>×</button></div>
+        <p className="muted small">הקיצורים פועלים כשלא מקלידים בתוך שדה, וגם כשהמקלדת בעברית. פקודות יוצאות מיד, בלי אישור נוסף, וכל מגבלות הסיכון חלות עליהן.</p>
+        <table>
+          <tbody>
+            {SHORTCUTS.map(([k, d]) => (
+              <tr key={k}><td><kbd>{k}</kbd></td><td>{d}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/** Short two-tone chime for price alerts (Web Audio; silently skipped if unavailable). */
+function beep() {
+  try {
+    const ctx = new AudioContext();
+    [880, 1320].forEach((f, i) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + i * 0.18);
+      g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + i * 0.18 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + i * 0.18 + 0.16);
+      o.connect(g).connect(ctx.destination);
+      o.start(ctx.currentTime + i * 0.18);
+      o.stop(ctx.currentTime + i * 0.18 + 0.17);
+    });
+    setTimeout(() => ctx.close(), 800);
+  } catch { /* audio unavailable */ }
 }

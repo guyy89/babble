@@ -68,3 +68,52 @@ export function atr(bars: Bar[], period = 14): (number | null)[] {
     return value;
   });
 }
+
+/** Simple moving average of closes; null until `period` bars exist. */
+export function sma(bars: Bar[], period: number): (number | null)[] {
+  let sum = 0;
+  return bars.map((b, i) => {
+    sum += b.c;
+    if (i >= period) sum -= bars[i - period].c;
+    return i >= period - 1 ? sum / period : null;
+  });
+}
+
+/** Bollinger Bands: SMA ± `mult` population standard deviations. */
+export function bollinger(bars: Bar[], period = 20, mult = 2) {
+  const mid = sma(bars, period);
+  const upper: (number | null)[] = [];
+  const lower: (number | null)[] = [];
+  bars.forEach((_, i) => {
+    const m = mid[i];
+    if (m === null) { upper.push(null); lower.push(null); return; }
+    let v = 0;
+    for (let k = i - period + 1; k <= i; k++) v += (bars[k].c - m) ** 2;
+    const sd = Math.sqrt(v / period);
+    upper.push(m + mult * sd);
+    lower.push(m - mult * sd);
+  });
+  return { mid, upper, lower };
+}
+
+/** MACD line (fast EMA − slow EMA), its signal EMA and the histogram. */
+export function macd(bars: Bar[], fast = 12, slow = 26, signal = 9) {
+  const f = ema(bars, fast);
+  const s = ema(bars, slow);
+  const line = bars.map((_, i) => (f[i] === null || s[i] === null ? null : f[i]! - s[i]!));
+  // Signal = EMA of the MACD line over the points where it exists.
+  const k = 2 / (signal + 1);
+  let prev: number | null = null;
+  let seen = 0;
+  let seed = 0;
+  const sig = line.map((v) => {
+    if (v === null) return null;
+    seen++;
+    if (seen < signal) { seed += v; return null; }
+    if (prev === null) { prev = (seed + v) / signal; return prev; }
+    prev = v * k + prev * (1 - k);
+    return prev;
+  });
+  const hist = line.map((v, i) => (v === null || sig[i] === null ? null : v - sig[i]!));
+  return { line, signal: sig, hist };
+}

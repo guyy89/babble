@@ -1,8 +1,8 @@
 import { useEffect, useReducer } from 'react';
 import type { PublicSettings } from '../../server/src/api/server';
-import type { Account, Bar, Fill, Order, Position, Quote } from '../../server/src/types';
+import type { Account, Bar, Fill, Order, Position, Quote, Trade } from '../../server/src/types';
 
-export type { Account, Bar, Fill, Order, Position, PublicSettings, Quote };
+export type { Account, Bar, Fill, Order, Position, PublicSettings, Quote, Trade };
 
 export interface Clock {
   isOpen: boolean;
@@ -110,6 +110,26 @@ export function onBar(fn: BarListener): () => void {
   return () => barListeners.delete(fn);
 }
 
+// Prints feed the time & sales tape. The last few per symbol are kept so switching symbols shows history.
+const TAPE_KEEP = 150;
+const tape = new Map<string, Trade[]>();
+type TradeListener = (t: Trade) => void;
+const tradeListeners = new Set<TradeListener>();
+export function onTrade(fn: TradeListener): () => void {
+  tradeListeners.add(fn);
+  return () => tradeListeners.delete(fn);
+}
+export function recentTrades(symbol: string): Trade[] {
+  return tape.get(symbol) ?? [];
+}
+function pushTrade(t: Trade): void {
+  const list = tape.get(t.symbol) ?? [];
+  list.unshift(t);
+  if (list.length > TAPE_KEEP) list.length = TAPE_KEEP;
+  tape.set(t.symbol, list);
+  tradeListeners.forEach((fn) => fn(t));
+}
+
 export function useTradingStore() {
   const [state, dispatch] = useReducer(reducer, initial);
 
@@ -125,6 +145,7 @@ export function useTradingStore() {
       ws.onmessage = (ev) => {
         const msg = JSON.parse(ev.data);
         if (msg.type === 'bar') barListeners.forEach((fn) => fn(msg.data));
+        else if (msg.type === 'trade') pushTrade(msg.data);
         else dispatch(msg);
       };
       ws.onclose = () => {

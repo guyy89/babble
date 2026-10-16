@@ -1,8 +1,10 @@
+import type { Journal } from '../../server/src/journal';
 import type { Movers } from '../../server/src/market/movers';
+import type { ScanFilter, ScanRow } from '../../server/src/market/scanner';
 import type { SymbolInfo } from '../../server/src/market/symbolDirectory';
-import type { Bar, Order, OrderRequest } from '../../server/src/types';
+import type { Bar, NewsItem, Order, OrderRequest } from '../../server/src/types';
 
-export type { Movers, OrderRequest, SymbolInfo };
+export type { Journal, Movers, NewsItem, OrderRequest, ScanFilter, ScanRow, SymbolInfo };
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -17,7 +19,13 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 }
 
 export const api = {
-  bars: (symbol: string) => call<Bar[]>('GET', `/bars/${symbol}`),
+  bars: (symbol: string, tf?: 'day') => call<Bar[]>('GET', `/bars/${symbol}${tf ? `?tf=${tf}` : ''}`),
+  modify: (id: string, changes: { limitPrice?: number; stopPrice?: number; trailAmount?: number | null }) =>
+    call<Order>('PATCH', `/orders/${id}`, changes),
+  journal: () => call<Journal>('GET', '/journal'),
+  scan: (f: ScanFilter) =>
+    call<ScanRow[]>('GET', `/scan?${new URLSearchParams(Object.entries(f).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)]))}`),
+  news: (symbol: string) => call<NewsItem[]>('GET', `/news/${encodeURIComponent(symbol)}`),
   submit: (req: OrderRequest) => call<Order>('POST', '/orders', req),
   cancel: (id: string) => call<Order>('DELETE', `/orders/${id}`),
   cancelAll: () => call<void>('DELETE', '/orders'),
