@@ -54,6 +54,16 @@ export interface OrderRequest {
   clientOrderId?: string;
 }
 
+export interface NewsItem {
+  id: number;
+  headline: string;
+  summary: string;
+  source: string;
+  url: string;
+  ts: number;
+  symbols: string[];
+}
+
 export interface Order {
   id: string;
   clientOrderId?: string;
@@ -80,6 +90,8 @@ export interface Order {
   legIds?: string[];
   /** Orders sharing an ocoGroup cancel each other when one fills. */
   ocoGroup?: string;
+  /** Trailing stop: the stop follows the market at this distance (in $) and never moves back. */
+  trailAmount?: number;
 }
 
 export interface Fill {
@@ -131,6 +143,6 @@ export interface Account {
 }
 
 export interface ServerEvent {
-  type: 'quote' | 'bar' | 'order' | 'fill' | 'account' | 'positions' | 'clock' | 'notice' | 'symbols';
+  type: 'quote' | 'bar' | 'trade' | 'order' | 'fill' | 'account' | 'positions' | 'clock' | 'notice' | 'symbols';
   data: unknown;
 }

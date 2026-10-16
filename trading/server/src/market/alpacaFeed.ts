@@ -1,4 +1,4 @@
-import type { Bar } from '../types.js';
+import type { Bar, NewsItem } from '../types.js';
 import { BaseFeed } from './feed.js';
 
 // Real-time US equities data from Alpaca's market data API (free tier = IEX feed).
@@ -50,6 +50,42 @@ export class AlpacaFeed extends BaseFeed {
       .map((b) => ({ symbol, t: Date.parse(b.t), o: b.o, h: b.h, l: b.l, c: b.c, v: b.v }))
       .reverse();
     this.seedBars(symbol, bars);
+  }
+
+  private daily = new Map<string, { at: number; bars: Bar[] }>();
+
+  /** About 15 months of daily bars from the REST API, cached for a minute (today's bar keeps moving). */
+  async dailyBars(symbol: string): Promise<Bar[]> {
+    const hit = this.daily.get(symbol);
+    if (hit && Date.now() - hit.at < 60_000) return hit.bars;
+    const start = new Date(Date.now() - 460 * 24 * 3600_000).toISOString().slice(0, 10);
+    const url = `${REST}/stocks/${symbol}/bars?timeframe=1Day&limit=1000&adjustment=split&feed=${this.creds.feed}&start=${start}`;
+    const res = await fetch(url, { headers: this.headers() });
+    if (!res.ok) throw new Error(`Alpaca daily bars ${symbol}: ${res.status} ${await res.text()}`);
+    const body = (await res.json()) as { bars: Array<{ t: string; o: number; h: number; l: number; c: number; v: number }> | null };
+    const bars = (body.bars ?? []).map((b) => ({ symbol, t: Date.parse(b.t.slice(0, 10) + 'T00:00:00Z'), o: b.o, h: b.h, l: b.l, c: b.c, v: b.v }));
+    this.daily.set(symbol, { at: Date.now(), bars });
+    return bars;
+  }
+
+  /** Latest news headlines for a symbol (Benzinga via Alpaca, included in the free plan). */
+  async news(symbol: string): Promise<NewsItem[]> {
+    const res = await fetch(`https://data.alpaca.markets/v1beta1/news?symbols=${encodeURIComponent(symbol)}&limit=20`, { headers: this.headers() });
+    if (!res.ok) throw new Error(`Alpaca news ${symbol}: ${res.status} ${await res.text()}`);
+    const body = (await res.json()) as { news: Array<{ id: number; headline: string; summary: string; source: string; url: string; created_at: string; symbols: string[] }> };
+    return body.news.map((n) => ({ id: n.id, headline: n.headline, summary: n.summary, source: n.source, url: n.url, ts: Date.parse(n.created_at), symbols: n.symbols }));
+  }
+
+  /** Snapshots for many symbols (chunked); used by the scanner. */
+  async snapshots(symbols: string[]): Promise<Record<string, Snapshot>> {
+    const out: Record<string, Snapshot> = {};
+    for (let i = 0; i < symbols.length; i += 100) {
+      const chunk = symbols.slice(i, i + 100);
+      const res = await fetch(`${REST}/stocks/snapshots?symbols=${chunk.join(',')}&feed=${this.creds.feed}`, { headers: this.headers() });
+      if (!res.ok) throw new Error(`Alpaca snapshots: ${res.status} ${await res.text()}`);
+      Object.assign(out, await res.json());
+    }
+    return out;
   }
 
   protected async onAdd(symbol: string): Promise<void> {
@@ -126,6 +162,8 @@ export class AlpacaFeed extends BaseFeed {
 }
 
 interface AQuote { bp: number; ap: number; bs: number; as: number; t: string }
+type ABar = { o: number; h: number; l: number; c: number; v: number };
+export interface Snapshot { latestTrade?: { p: number }; dailyBar?: ABar; prevDailyBar?: ABar }
 type AlpacaMsg =
   | { T: 'success'; msg: string }
   | { T: 'error'; code: number; msg: string }

@@ -7,6 +7,7 @@ import { AlpacaFeed } from './market/alpacaFeed.js';
 import { MarketClock } from './market/clock.js';
 import type { MarketDataFeed } from './market/feed.js';
 import { alpacaMovers, simMovers } from './market/movers.js';
+import { alpacaScanner, simScanner } from './market/scanner.js';
 import { SimFeed } from './market/simFeed.js';
 import { alpacaSymbols, simSymbols, SymbolDirectory } from './market/symbolDirectory.js';
 import { TradingService } from './tradingService.js';
@@ -17,13 +18,14 @@ const simulated = config.dataSource === 'sim';
 const watchlistStore = new JsonFileStore<string[]>(resolve(config.dataDir, `watchlist-${config.dataSource}.json`));
 const symbols = watchlistStore.load() ?? config.symbols;
 
-const feed: MarketDataFeed = simulated
-  ? new SimFeed(symbols)
-  : new AlpacaFeed(symbols, config.alpaca);
+const alpaca = simulated ? undefined : new AlpacaFeed(symbols, config.alpaca);
+const feed: MarketDataFeed = alpaca ?? new SimFeed(symbols);
 
 const directory = new SymbolDirectory(simulated ? simSymbols : alpacaSymbols(config.alpaca));
 await directory.load();
-const movers = simulated ? simMovers(feed, directory) : alpacaMovers(config.alpaca, directory);
+const movers = alpaca ? alpacaMovers(config.alpaca, directory) : simMovers(feed, directory);
+const scan = alpaca ? alpacaScanner(config.alpaca, directory, (s) => alpaca.snapshots(s)) : simScanner(feed, directory);
+const news = alpaca ? (symbol: string) => alpaca.news(symbol) : async () => [];
 
 // Synthetic data has no session, so the simulated market never closes.
 const clock = new MarketClock(simulated);
@@ -34,7 +36,7 @@ const broker = new PaperBroker(feed, clock, config.paper, store);
 const svc = new TradingService(feed, broker, clock, config.risk, directory, watchlistStore);
 await svc.start();
 
-const server = createApiServer(svc, { fees: config.paper.fees, risk: config.risk }, movers);
+const server = createApiServer(svc, { fees: config.paper.fees, risk: config.risk }, { movers, scan, news });
 server.listen(config.port, () => {
   console.log(`DayTrader API on http://localhost:${config.port}  (data: ${feed.name}, broker: ${broker.name})`);
 });

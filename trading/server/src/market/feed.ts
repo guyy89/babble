@@ -11,10 +11,32 @@ export interface MarketDataFeed extends EventEmitter {
   removeSymbol(symbol: string): void;
   getQuote(symbol: string): Quote | undefined;
   getBars(symbol: string): Bar[];
+  /** Daily bars (oldest first), today's included while the session runs. */
+  dailyBars(symbol: string): Promise<Bar[]>;
   // Events: 'quote' (Quote), 'trade' (Trade), 'bar' (Bar — emitted on every update of the current bar)
 }
 
 const MINUTE = 60_000;
+const nyDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' });
+
+export function toDaily(minuteBars: Bar[]): Bar[] {
+  const out: Bar[] = [];
+  let day = '';
+  for (const b of minuteBars) {
+    const d = nyDay.format(new Date(b.t));
+    const last = out.at(-1);
+    if (d === day && last) {
+      last.h = Math.max(last.h, b.h);
+      last.l = Math.min(last.l, b.l);
+      last.c = b.c;
+      last.v += b.v;
+    } else {
+      day = d;
+      out.push({ ...b, t: Date.parse(`${d}T00:00:00Z`) });
+    }
+  }
+  return out;
+}
 const MAX_BARS = 2000;
 
 /** Shared quote/trade cache plus 1-minute bar aggregation. */
@@ -68,6 +90,11 @@ export abstract class BaseFeed extends EventEmitter implements MarketDataFeed {
 
   getBars(symbol: string): Bar[] {
     return this.bars.get(symbol) ?? [];
+  }
+
+  /** Default: roll the 1-minute history up into New York trading days. */
+  async dailyBars(symbol: string): Promise<Bar[]> {
+    return toDaily(this.getBars(symbol));
   }
 
   protected seedBars(symbol: string, history: Bar[]): void {

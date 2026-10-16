@@ -37,6 +37,7 @@ export class TradingService extends EventEmitter {
   async start(): Promise<void> {
     this.feed.on('quote', (q) => this.send({ type: 'quote', data: q }));
     this.feed.on('bar', (b) => this.send({ type: 'bar', data: b }));
+    this.feed.on('trade', (t) => this.send({ type: 'trade', data: t }));
     this.broker.on('order', (o: Order) => {
       this.send({ type: 'order', data: o });
       if (o.status === 'rejected') this.notice('warn', `${sideHe(o.side)} ${o.qty} ${o.symbol} נדחתה: ${o.rejectReason}`);

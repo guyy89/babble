@@ -19,9 +19,17 @@ export interface Broker extends EventEmitter {
   /** Resolves with the order even when it was rejected — check order.status. */
   submitOrder(req: OrderRequest): Promise<Order>;
   cancelOrder(id: string): Promise<Order>;
+  modifyOrder(id: string, changes: OrderChanges): Promise<Order>;
   cancelAll(): Promise<void>;
   closePosition(symbol: string): Promise<Order | undefined>;
   closeAll(): Promise<void>;
+}
+
+/** Price changes for a working order. trailAmount: null removes trailing. */
+export interface OrderChanges {
+  limitPrice?: number;
+  stopPrice?: number;
+  trailAmount?: number | null;
 }
 
 export class BrokerError extends Error {

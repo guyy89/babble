@@ -6,16 +6,36 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { BrokerError } from '../broker/broker.js';
 import type { FeeSchedule } from '../broker/fees.js';
 import type { RiskConfig } from '../config.js';
+import { buildJournal } from '../journal.js';
 import type { Movers } from '../market/movers.js';
+import type { ScanFilter, ScanRow } from '../market/scanner.js';
 import type { TradingService } from '../tradingService.js';
-import type { OrderRequest } from '../types.js';
+import type { NewsItem, OrderRequest } from '../types.js';
+
+export interface MarketServices {
+  movers: () => Promise<Movers>;
+  scan: (filter: ScanFilter) => Promise<ScanRow[]>;
+  news: (symbol: string) => Promise<NewsItem[]>;
+}
+
+const numParam = (v: unknown) => (v === undefined || v === '' || Number.isNaN(Number(v)) ? undefined : Number(v));
+
+/** Wraps a data-provider call so an upstream failure becomes a readable 502 instead of a generic 500. */
+async function upstream<T>(what: string, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    console.error(`[${what}]`, err);
+    throw new BrokerError(`לא הצלחתי לטעון ${what} מספק הנתונים`, 502);
+  }
+}
 
 export interface PublicSettings {
   fees?: FeeSchedule;
   risk: RiskConfig;
 }
 
-export function createApiServer(svc: TradingService, settings: PublicSettings, movers: () => Promise<Movers>): Server {
+export function createApiServer(svc: TradingService, settings: PublicSettings, market: MarketServices): Server {
   const app = express();
   app.use(express.json());
 
@@ -34,12 +54,7 @@ export function createApiServer(svc: TradingService, settings: PublicSettings, m
     res.json(svc.directory.search(String(req.query.q ?? ''), 20));
   });
   app.get('/api/movers', async (_req, res) => {
-    try {
-      res.json(await movers());
-    } catch (err) {
-      console.error('[movers]', err);
-      throw new BrokerError('לא הצלחתי לטעון את רשימת המניות שזזות היום', 502);
-    }
+    res.json(await upstream('את רשימת המניות שזזות היום', market.movers));
   });
   app.post('/api/watchlist', async (req, res) => {
     await svc.addSymbol(String(req.body?.symbol ?? ''));
@@ -49,8 +64,26 @@ export function createApiServer(svc: TradingService, settings: PublicSettings, m
     await svc.removeSymbol(req.params.symbol);
     res.json(svc.watchlist());
   });
-  app.get('/api/bars/:symbol', (req, res) => {
-    res.json(feed.getBars(req.params.symbol.toUpperCase()));
+  app.get('/api/bars/:symbol', async (req, res) => {
+    const symbol = req.params.symbol.toUpperCase();
+    if (req.query.tf === 'day') return void res.json(await upstream('נרות יומיים', () => feed.dailyBars(symbol)));
+    res.json(feed.getBars(symbol));
+  });
+  app.get('/api/news/:symbol', async (req, res) => {
+    res.json(await upstream('חדשות', () => market.news(req.params.symbol.toUpperCase())));
+  });
+  app.get('/api/scan', async (req, res) => {
+    const q = req.query;
+    const filter: ScanFilter = {
+      minPrice: numParam(q.minPrice), maxPrice: numParam(q.maxPrice), minVolume: numParam(q.minVolume),
+      minChangePct: numParam(q.minChangePct), minGapPct: numParam(q.minGapPct),
+      direction: q.direction === 'up' || q.direction === 'down' ? q.direction : 'any',
+      sort: q.sort === 'gap' || q.sort === 'volume' ? q.sort : 'change',
+    };
+    res.json(await upstream('תוצאות סריקה', () => market.scan(filter)));
+  });
+  app.get('/api/journal', async (_req, res) => {
+    res.json(buildJournal(await broker.getFills(), await broker.getOrders('all')));
   });
   app.get('/api/account', async (_req, res) => {
     res.json(await svc.account());
@@ -79,6 +112,13 @@ export function createApiServer(svc: TradingService, settings: PublicSettings, m
   app.post('/api/orders', async (req, res) => {
     const order = await svc.submitOrder(req.body as OrderRequest);
     res.status(order.status === 'rejected' ? 422 : 201).json(order);
+  });
+  app.patch('/api/orders/:id', async (req, res) => {
+    const b = req.body ?? {};
+    res.json(await broker.modifyOrder(req.params.id, {
+      limitPrice: numParam(b.limitPrice), stopPrice: numParam(b.stopPrice),
+      trailAmount: b.trailAmount === null ? null : numParam(b.trailAmount),
+    }));
   });
   app.delete('/api/orders/:id', async (req, res) => {
     res.json(await broker.cancelOrder(req.params.id));
@@ -140,7 +180,7 @@ export function createApiServer(svc: TradingService, settings: PublicSettings, m
     for (const client of wss.clients) {
       // Drop quote updates for slow clients instead of letting the buffer grow unbounded.
       if (client.readyState !== WebSocket.OPEN) continue;
-      if (ev.type === 'quote' && client.bufferedAmount > 1_000_000) continue;
+      if ((ev.type === 'quote' || ev.type === 'trade') && client.bufferedAmount > 1_000_000) continue;
       client.send(msg);
     }
   });

@@ -43,6 +43,34 @@ export class SimFeed extends BaseFeed {
 
   protected onRemove(symbol: string): void {
     this.state.delete(symbol);
+    this.daily.delete(symbol);
+  }
+
+  private daily = new Map<string, Bar[]>();
+
+  /** A year of synthetic daily bars ending in today's (generated) session. */
+  async dailyBars(symbol: string): Promise<Bar[]> {
+    const today = await super.dailyBars(symbol);
+    if (!today.length) return today;
+    let past = this.daily.get(symbol);
+    if (!past) {
+      past = [];
+      let price = today[0].o;
+      const dayMs = 24 * 3600_000;
+      for (let i = 1, t = today[0].t; past.length < 250; i++) {
+        t -= dayMs;
+        const wd = new Date(t).getUTCDay();
+        if (wd === 0 || wd === 6) continue;
+        const c = price;
+        const o = c * Math.exp(0.012 * this.gaussian());
+        const h = Math.max(o, c) * (1 + Math.abs(0.008 * this.gaussian()));
+        const l = Math.min(o, c) * (1 - Math.abs(0.008 * this.gaussian()));
+        past.unshift({ symbol, t, o: round2(o), h: round2(h), l: round2(l), c: round2(c), v: Math.round(5e6 * (0.5 + this.rng())) });
+        price = o;
+      }
+      this.daily.set(symbol, past);
+    }
+    return [...past, ...today];
   }
 
   async start(): Promise<void> {

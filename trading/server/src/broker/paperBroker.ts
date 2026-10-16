@@ -4,7 +4,7 @@ import type { PaperConfig } from '../config.js';
 import type { MarketClock } from '../market/clock.js';
 import type { MarketDataFeed } from '../market/feed.js';
 import type { Account, Fill, Order, OrderRequest, Position, Quote } from '../types.js';
-import type { Broker } from './broker.js';
+import type { Broker, OrderChanges } from './broker.js';
 import { BrokerError } from './broker.js';
 import { orderCommission, regulatoryFees } from './fees.js';
 import { executableQuote } from './quote.js';
@@ -143,6 +143,45 @@ export class PaperBroker extends EventEmitter implements Broker {
     if (!o) throw new BrokerError(`הפקודה ${id} לא נמצאה`, 404);
     if (!OPEN.has(o.status)) throw new BrokerError(`הפקודה כבר לא פתוחה (${o.status})`);
     this.finish(o, 'canceled');
+    this.persist();
+    return o;
+  }
+
+  /**
+   * Move a working order's prices, or attach a trailing distance to a stop. Used for "stop to breakeven"
+   * and trailing stops on bracket stop-loss legs.
+   */
+  async modifyOrder(id: string, changes: OrderChanges): Promise<Order> {
+    const o = this.orders.get(id);
+    if (!o) throw new BrokerError(`הפקודה ${id} לא נמצאה`, 404);
+    if (!OPEN.has(o.status)) throw new BrokerError(`הפקודה כבר לא פתוחה (${o.status})`);
+    if (changes.limitPrice !== undefined) {
+      if (o.type !== 'limit' && o.type !== 'stop_limit') throw new BrokerError('לפקודה הזאת אין מחיר לימיט');
+      if (!validPrice(changes.limitPrice)) throw new BrokerError('מחיר הלימיט לא תקין');
+      o.limitPrice = changes.limitPrice;
+    }
+    if (changes.stopPrice !== undefined || changes.trailAmount !== undefined) {
+      if (o.type !== 'stop' && o.type !== 'stop_limit') throw new BrokerError('לפקודה הזאת אין מחיר סטופ');
+      if (o.triggered) throw new BrokerError('הסטופ כבר הופעל');
+    }
+    if (changes.stopPrice !== undefined) {
+      if (!validPrice(changes.stopPrice)) throw new BrokerError('מחיר הסטופ לא תקין');
+      // Same rule as on entry: a stop on the wrong side of the market would fire immediately.
+      const q = this.quoteFor(o.symbol);
+      if (q && o.side === 'sell' && changes.stopPrice >= q.bid) throw new BrokerError(`סטופ מכירה חייב להיות מתחת למחיר הביקוש (${q.bid})`);
+      if (q && o.side === 'buy' && changes.stopPrice <= q.ask) throw new BrokerError(`סטופ קנייה חייב להיות מעל מחיר ההיצע (${q.ask})`);
+      o.stopPrice = changes.stopPrice;
+    }
+    if (changes.trailAmount !== undefined) {
+      if (changes.trailAmount !== null && !(changes.trailAmount > 0)) throw new BrokerError('מרחק הסטופ הנגרר חייב להיות חיובי');
+      o.trailAmount = changes.trailAmount ?? undefined;
+    }
+    this.touch(o);
+    const q = this.quoteFor(o.symbol);
+    if (q && WORKING.has(o.status)) {
+      this.trail(o, q);
+      this.tryExecute(o, q, false);
+    }
     this.persist();
     return o;
   }
@@ -363,6 +402,17 @@ export class PaperBroker extends EventEmitter implements Broker {
     }
   }
 
+  /** Ratchets a trailing stop toward the market; it never moves away. Returns true when it moved. */
+  private trail(o: Order, q: Quote): boolean {
+    if (!o.trailAmount || o.triggered || (o.type !== 'stop' && o.type !== 'stop_limit')) return false;
+    const next = round2(o.side === 'sell' ? q.bid - o.trailAmount : q.ask + o.trailAmount);
+    const better = o.side === 'sell' ? next > (o.stopPrice ?? -Infinity) : next < (o.stopPrice ?? Infinity);
+    if (!better) return false;
+    o.stopPrice = next;
+    this.touch(o);
+    return true;
+  }
+
   private activateLeg(leg: Order, qty: number): void {
     leg.qty = qty;
     leg.status = 'new';
@@ -380,6 +430,7 @@ export class PaperBroker extends EventEmitter implements Broker {
       if (o.symbol !== q.symbol || !WORKING.has(o.status)) continue;
       const before = o.filledQty;
       const wasTriggered = o.triggered;
+      if (this.trail(o, q)) changed = true;
       this.tryExecute(o, q, false);
       if (o.filledQty !== before || o.triggered !== wasTriggered) changed = true;
     }
