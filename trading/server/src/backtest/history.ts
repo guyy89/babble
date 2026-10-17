@@ -58,6 +58,13 @@ export class AlpacaHistory {
     return out;
   }
 
+  /** Daily bars without the disk cache (the cache is keyed by symbol count, not by the symbol set). */
+  async dailyUncached(symbols: string[], start: string, end: string): Promise<Record<string, Bar[]>> {
+    const out: Record<string, Bar[]> = {};
+    for (let i = 0; i < symbols.length; i += 200) Object.assign(out, await this.bars(symbols.slice(i, i + 200), '1Day', start, end));
+    return out;
+  }
+
   /** Daily bars for many symbols (chunked), cached per date range. A cached wider range is reused. */
   async daily(symbols: string[], start: string, end: string, onProgress?: (done: number, total: number) => void) {
     const covering = this.coveringDaily(symbols.length, start, end);

@@ -7,6 +7,7 @@ import { BrokerError } from '../broker/broker.js';
 import type { FeeSchedule } from '../broker/fees.js';
 import type { RiskConfig } from '../config.js';
 import type { OrbBot } from '../bot/orbBot.js';
+import type { XsMomBot } from '../bot/xsMomBot.js';
 import { buildJournal } from '../journal.js';
 import { researchProgress } from '../research/progress.js';
 import type { Movers } from '../market/movers.js';
@@ -40,6 +41,7 @@ export interface PublicSettings {
 export function createApiServer(
   svc: TradingService, settings: PublicSettings, market: MarketServices, bot: OrbBot,
   replay?: { date: string; speed: number },
+  xsBot?: XsMomBot,
 ): Server {
   const app = express();
   app.use(express.json());
@@ -97,6 +99,19 @@ export function createApiServer(
       throw new BrokerError((err as Error).message, 409);
     }
     res.json(bot.status());
+  });
+  app.get('/api/xsbot', async (_req, res) => {
+    if (!xsBot) throw new BrokerError('רובוט הסל לא פעיל', 404);
+    res.json(await xsBot.status());
+  });
+  app.post('/api/xsbot', async (req, res) => {
+    if (!xsBot) throw new BrokerError('רובוט הסל לא פעיל', 404);
+    try {
+      xsBot.setEnabled(Boolean(req.body?.enabled));
+    } catch (err) {
+      throw new BrokerError((err as Error).message, 409);
+    }
+    res.json(await xsBot.status());
   });
   app.get('/api/research/progress', (_req, res) => {
     res.json(researchProgress());

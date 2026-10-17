@@ -3,6 +3,7 @@ import { createApiServer } from './api/server.js';
 import { AlpacaHistory } from './backtest/history.js';
 import { candidateRows, nyToUtc } from './backtest/universe.js';
 import { OrbBot, type BotState } from './bot/orbBot.js';
+import { atr14, XS_EXCLUDED, XS_PARAMS, XsMomBot, type XsState } from './bot/xsMomBot.js';
 import { JsonFileStore } from './broker/stateStore.js';
 import { PaperBroker, type PaperState } from './broker/paperBroker.js';
 import { config } from './config.js';
@@ -95,8 +96,62 @@ const bot = new OrbBot(
 // In a sped-up replay the robot must act at the same market-time cadence as live (every 5 market seconds).
 bot.start(replaying ? Math.max(50, 5000 / Math.max(1, config.replay.speed)) : 5000);
 
+// ---------------------------------------------------------------- momentum-basket robot (own paper account)
+// Forward test of the research candidate r2_xsmom on a separate paper account, so its result is measured
+// cleanly and never mixes with manual practice. Same market data and fees; its own risk limits (no stop).
+const xsParams = { ...XS_PARAMS, riskPerLeg: config.xsmom.riskPerLeg };
+const xsBroker = new PaperBroker(feed, clock, { ...config.paper, startingCash: config.xsmom.startingCash },
+  replaying ? undefined : new JsonFileStore<PaperState>(resolve(config.dataDir, `paper-xsmom-${config.dataSource}.json`)), now);
+const xsSvc = new TradingService(feed, xsBroker, clock, {
+  maxDailyLoss: 0, maxRiskPerTrade: 0, maxPositionNotional: 200 * xsParams.riskPerLeg, maxOrderNotional: 200 * xsParams.riskPerLeg,
+  flattenMinutesBeforeClose: config.risk.flattenMinutesBeforeClose,
+}, directory, undefined, false);
+await xsSvc.start();
+const sipHistory = alpaca ? new AlpacaHistory({ ...config.alpaca, feed: 'sip' }, resolve(config.dataDir, 'backtest-cache')) : undefined;
+
+/** Previous close, ATR14 and 20-day consolidated average volume for the ~400 biggest stocks by $ volume (IEX volume misranks some ETFs, so the pool is wide). */
+async function xsPrepare() {
+  if (!alpaca || !history || !sipHistory) return [];
+  const today = clock.nyDate();
+  const from = ymd(Date.parse(today) - 45 * 86400_000), yesterday = ymd(Date.parse(today) - 86400_000);
+  const name = (s: string) => directory.get(s)?.name ?? s;
+  const rough = Object.entries(await history.daily(allSymbols(), from, yesterday)).flatMap(([symbol, bars]) => {
+    const prev = bars.filter((b) => ymd(b.t) < today).slice(-20);
+    const last = prev.at(-1);
+    if (!last || prev.length < 10 || last.c < 4 || XS_EXCLUDED.test(name(symbol))) return [];
+    return [{ symbol, dollarVol: (prev.reduce((a, b) => a + b.v, 0) / prev.length) * last.c }];
+  }).sort((a, b) => b.dollarVol - a.dollarVol).slice(0, 400).map((r) => r.symbol);
+  const sip = await sipHistory.dailyUncached(rough, from, yesterday);
+  return rough.flatMap((symbol) => {
+    const bars = (sip[symbol] ?? []).filter((b) => ymd(b.t) < today);
+    const prev = bars.slice(-20), last = bars.at(-1);
+    const atr = atr14(bars);
+    if (!last || bars.length < 7 || !(atr > 0)) return [];
+    return [{ symbol, name: name(symbol), prevClose: last.c, atr, avgVolume: prev.reduce((a, b) => a + b.v, 0) / prev.length }];
+  });
+}
+
+/** Today's open and the latest trade, from live snapshots. */
+async function xsPrices(symbols: string[]) {
+  const today = clock.nyDate();
+  const snaps = await alpaca!.snapshots(symbols);
+  const out: Record<string, { open: number; px: number }> = {};
+  for (const s of symbols) {
+    const d = snaps[s]?.dailyBar, px = snaps[s]?.latestTrade?.p;
+    if (d?.t && ymd(Date.parse(d.t)) === today && d.o > 0 && px) out[s] = { open: d.o, px };
+  }
+  return out;
+}
+
+const xsBot = new XsMomBot(
+  xsSvc, xsPrepare, xsPrices, xsParams,
+  replaying ? undefined : new JsonFileStore<XsState>(resolve(config.dataDir, 'xsmom-bot.json')),
+  simulated || replaying ? 'הרובוט עובד רק עם נתוני שוק חיים מאלפקה' : undefined, now,
+);
+xsBot.start(5000);
+
 const server = createApiServer(svc, { fees: config.paper.fees, risk: config.risk }, { movers, scan, news }, bot,
-  replaying ? { date: config.replay.date, speed: config.replay.speed } : undefined);
+  replaying ? { date: config.replay.date, speed: config.replay.speed } : undefined, xsBot);
 server.listen(config.port, () => {
   const mode = replaying ? `replay ${config.replay.date} x${config.replay.speed}` : feed.name;
   console.log(`DayTrader API on http://localhost:${config.port}  (data: ${mode}, broker: ${broker.name})`);
@@ -105,6 +160,8 @@ server.listen(config.port, () => {
 for (const sig of ['SIGINT', 'SIGTERM'] as const) {
   process.on(sig, () => {
     bot.stop();
+    xsBot.stop();
+    xsSvc.stop();
     svc.stop();
     server.close();
     process.exit(0);

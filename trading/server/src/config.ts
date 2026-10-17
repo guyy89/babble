@@ -94,6 +94,11 @@ export const config = {
     maxOrderNotional: num('MAX_ORDER_NOTIONAL', 10000),
     flattenMinutesBeforeClose: num('FLATTEN_MINUTES_BEFORE_CLOSE', 5),
   } satisfies RiskConfig,
+  // Momentum-basket robot (forward test of r2_xsmom) on its own paper account.
+  xsmom: {
+    startingCash: num('XSMOM_STARTING_CASH', 25000),
+    riskPerLeg: num('XSMOM_RISK_PER_LEG', 200),
+  },
 };
 
 export type AppConfig = typeof config;

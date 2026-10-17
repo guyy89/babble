@@ -29,6 +29,8 @@ export class TradingService extends EventEmitter {
     private readonly riskCfg: RiskConfig,
     readonly directory: SymbolDirectory,
     private readonly watchlistStore?: StateStore<string[]>,
+    /** false when another service already started this feed (a second account on the same market data). */
+    private readonly ownsFeed = true,
   ) {
     super();
     this.risk = new RiskManager(riskCfg);
@@ -45,7 +47,7 @@ export class TradingService extends EventEmitter {
     this.broker.on('fill', (f) => this.send({ type: 'fill', data: f }));
     this.broker.on('account', () => (this.accountDirty = true));
 
-    await this.feed.start();
+    if (this.ownsFeed) await this.feed.start();
     await this.broker.start();
 
     // Account/position snapshots are throttled; quotes move them many times a second.
@@ -54,7 +56,7 @@ export class TradingService extends EventEmitter {
 
   stop(): void {
     if (this.timer) clearInterval(this.timer);
-    this.feed.stop();
+    if (this.ownsFeed) this.feed.stop();
     this.broker.stop();
   }
 
