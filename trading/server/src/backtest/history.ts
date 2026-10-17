@@ -37,7 +37,11 @@ export class AlpacaHistory {
   }
 
   /** Multi-symbol bars with pagination. */
-  private async bars(symbols: string[], timeframe: string, start: string, end: string): Promise<Record<string, Bar[]>> {
+  private async bars(symbols: string[], timeframe: string, start: string, endArg: string): Promise<Record<string, Bar[]>> {
+    // A date-only end means the whole day; free plans may not query the last 15 minutes of consolidated
+    // (SIP) data, so cap the end at 20 minutes ago.
+    const endMs = Math.min(/T/.test(endArg) ? Date.parse(endArg) : Date.parse(`${endArg}T23:59:59Z`), Date.now() - 20 * 60_000);
+    const end = new Date(endMs).toISOString();
     const out: Record<string, Bar[]> = {};
     let token: string | undefined;
     do {

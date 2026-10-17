@@ -9,8 +9,9 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { config } from '../config.js';
 import { accept, PERIODS, runPeriod, type Metrics } from './evaluate.js';
-import { DEFAULT_COSTS, DEFAULT_RULES } from './sim.js';
-import type { Rules, Strategy } from './types.js';
+import { COST_MODEL, DEFAULT_COSTS, DEFAULT_RULES } from './sim.js';
+import type { ResearchTrade, Rules, Strategy } from './types.js';
+import { acceptWF, MONTHS, runAll, walkForward, type Params } from './walkforward.js';
 
 type Family = { strategy: Strategy<Record<string, unknown>>; grid: Record<string, unknown[]>; rules?: Partial<Pick<Rules, 'maxTrades' | 'maxLosses' | 'lastEntryMinute'>> };
 
@@ -50,6 +51,43 @@ async function main() {
     results.sort((a, b) => b.metrics.net - a.metrics.net);
     writeFileSync(resolve(OUT, `${family}-is.json`), JSON.stringify({ rules, results }, null, 1));
     for (const r of results.slice(0, 15)) console.log(row(r.metrics), JSON.stringify(r.params));
+    return;
+  }
+
+  if (cmd === 'wf') {
+    // Round 2: every config over the last 6 months, then walk-forward selection (see walkforward.ts).
+    const all = combos(fam.grid);
+    if (all.length > 4000) throw new Error(`${all.length} configurations: keep a single wf run at or under 4000`);
+    const strat = fam.strategy as Strategy<Params>;
+    const t0 = Date.now();
+    console.log(`${family}: ${all.length} configurations, ${MONTHS[0].from}..${MONTHS.at(-1)!.to}`);
+    const { dates, trades } = runAll(strat, all, MONTHS[0].from, MONTHS.at(-1)!.to, DEFAULT_COSTS, (i, n) => process.stdout.write(`\rday ${i}/${n}`));
+    process.stdout.write('\n');
+    const wf = walkForward(trades, dates);
+    // Stress: re-run only the selected configs, with double slippage and fees, in the months they were picked for.
+    const stressCosts = { ...DEFAULT_COSTS, slippagePct: DEFAULT_COSTS.slippagePct * 2, liquidSlippagePct: DEFAULT_COSTS.liquidSlippagePct * 2, feeMultiplier: 2 };
+    let stressR = 0;
+    for (const sel of wf.selections) {
+      if (sel.config < 0) continue;
+      const m = MONTHS.find((x) => x.name === sel.month)!;
+      const st = runAll(strat, [all[sel.config]], m.from, m.to, stressCosts).trades[0];
+      stressR += st.reduce((a: number, t: ResearchTrade) => a + t.r, 0);
+    }
+    const verdict = acceptWF(wf, stressR);
+    const ranked = trades.map((ts, i) => ({ i, params: all[i], totalR: Math.round(ts.reduce((a, t) => a + t.r, 0) * 100) / 100, trades: ts.length }))
+      .sort((a, b) => b.totalR - a.totalR);
+    const summary = {
+      family, configs: all.length, seconds: Math.round((Date.now() - t0) / 1000),
+      walkForward: { totalR: wf.totalR, tStat: wf.tStat, perMonth: wf.perMonth, metrics: wf.metrics, stressR: Math.round(stressR * 100) / 100 },
+      selections: wf.selections.map((s) => ({ ...s, params: s.config >= 0 ? all[s.config] : null })),
+      verdict,
+      top20FullPeriod: ranked.slice(0, 20),
+    };
+    // Commission-free reruns are kept next to the IBKR results instead of overwriting them.
+    const suffix = COST_MODEL === 'alpaca' ? '-alpaca' : '';
+    writeFileSync(resolve(OUT, `${family}-wf${suffix}.json`), JSON.stringify({ ...summary, costModel: COST_MODEL, wfTrades: wf.trades }, null, 1));
+    appendFileSync(resolve(OUT, 'runs-log.jsonl'), JSON.stringify({ ts: new Date().toISOString(), family, costModel: COST_MODEL, configs: all.length, totalR: wf.totalR, tStat: wf.tStat, passed: verdict.passed }) + '\n');
+    console.log(JSON.stringify(summary, null, 1));
     return;
   }
 

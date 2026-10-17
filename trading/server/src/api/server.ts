@@ -8,6 +8,7 @@ import type { FeeSchedule } from '../broker/fees.js';
 import type { RiskConfig } from '../config.js';
 import type { OrbBot } from '../bot/orbBot.js';
 import { buildJournal } from '../journal.js';
+import { researchProgress } from '../research/progress.js';
 import type { Movers } from '../market/movers.js';
 import type { ScanFilter, ScanRow } from '../market/scanner.js';
 import type { TradingService } from '../tradingService.js';
@@ -96,6 +97,9 @@ export function createApiServer(
       throw new BrokerError((err as Error).message, 409);
     }
     res.json(bot.status());
+  });
+  app.get('/api/research/progress', (_req, res) => {
+    res.json(researchProgress());
   });
   app.get('/api/journal', async (_req, res) => {
     res.json(buildJournal((await broker.getFills()).reverse(), await broker.getOrders('all')));

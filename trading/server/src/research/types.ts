@@ -53,6 +53,15 @@ export interface Signal {
   exitMinute?: number;
   /** Optional label for analysis. */
   tag?: string;
+  /**
+   * Enter with a LIMIT order at this price instead of at market. It fills only when a later bar trades
+   * THROUGH the price by at least a cent (a touch is not enough), at the better of the limit and the bar open,
+   * with no slippage. Unfilled after limitTtl minutes (default 10) it is cancelled.
+   */
+  entryLimit?: number;
+  limitTtl?: number;
+  /** Size from `stop` but do not place it: the trade exits only by target, time or the close. */
+  noStop?: boolean;
 }
 
 export interface Strategy<P extends object = Record<string, number | string | boolean>> {
@@ -64,6 +73,7 @@ export interface Strategy<P extends object = Record<string, number | string | bo
 }
 
 export interface Rules {
+  /** $ risked per trade (distance to stop × shares). For dailyLossLimit/maxTrades/maxLosses/maxConcurrent, 0 = no limit. */
   riskPerTrade: number;
   maxPositionNotional: number;
   buyingPower: number;
@@ -77,7 +87,10 @@ export interface Rules {
 }
 
 export interface Costs {
+  /** Slippage on market-style fills for small/volatile names (gappers), fraction of price. */
   slippagePct: number;
+  /** Slippage for large liquid names and index ETFs (tags liquid/index), fraction of price. */
+  liquidSlippagePct: number;
   minSlippage: number;
   /** Multiplier on commissions and regulatory fees (stress tests use 2). */
   feeMultiplier: number;
@@ -99,4 +112,5 @@ export interface ResearchTrade {
   net: number;
   r: number;
   exitReason: 'stop' | 'target' | 'breakeven' | 'trail' | 'time' | 'flatten';
+  entryType: 'market' | 'limit';
 }

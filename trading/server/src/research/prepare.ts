@@ -18,7 +18,14 @@ const arg = (name: string, fallback: string) => {
 };
 const from = arg('from', '2025-10-16');
 const to = arg('to', '2026-10-16');
-const OUT = resolve(config.dataDir, 'research');
+// --feed sip gives consolidated (all-exchange) bars; free plans may use it for history older than 15 minutes.
+const FEED = arg('feed', 'iex');
+const OUT = resolve(config.dataDir, arg('out', 'research'));
+const SIP = FEED === 'sip';
+// Volume thresholds are in the feed's units: consolidated volume is ~25–40x the IEX share.
+const MIN_GAP_AVGVOL = SIP ? 500_000 : 50_000;
+const N_GAP = Number(arg('gappers', '25'));
+const N_LIQUID = Number(arg('liquid', '15'));
 const LEVERAGED = /\b(\d(\.\d)?x|2x|3x|ultra|leveraged?|inverse|bull|bear|daily target)\b/i;
 const NOT_COMMON = /\b(warrants?|rights?|units?|preferred|notes?)\b/i;
 
@@ -26,13 +33,13 @@ type Row = [number, number, number, number, number, number];
 const compact = (bars: Bar[]): Row[] => bars.map((b) => [b.t, b.o, b.h, b.l, b.c, b.v]);
 
 async function main() {
-  const history = new AlpacaHistory(config.alpaca, resolve(config.dataDir, 'backtest-cache'));
+  const history = new AlpacaHistory({ ...config.alpaca, feed: FEED }, resolve(config.dataDir, 'backtest-cache'));
   const assets = await alpacaSymbols(config.alpaca)();
   const names = new Map(assets.map((a) => [a.symbol, a.name]));
 
   // 1. Liquid universe from the cached 6-month download (IEX volume), so the year download stays small.
   const cacheDir = resolve(config.dataDir, 'backtest-cache');
-  const big = readdirSync(cacheDir).find((f) => f.startsWith('daily-') && f.endsWith(`-${assets.length}.json`));
+  const big = readdirSync(cacheDir).find((f) => f.startsWith('daily-iex-') && f.endsWith(`-${assets.length}.json`));
   if (!big) throw new Error('run the backtest first (it caches the full daily universe)');
   const recent = JSON.parse(readFileSync(resolve(cacheDir, big), 'utf8')) as Record<string, Bar[]>;
   const universe = Object.entries(recent).filter(([s, bars]) => {
@@ -63,13 +70,13 @@ async function main() {
     const rows = candidateRows(daily, names, date).filter((r) => r.prevClose > 0);
     const meta = new Map(rows.map((r) => [r.symbol, { ...r, gapPct: ((r.open - r.prevClose) / r.prevClose) * 100, tags: [] as string[] }]));
     const gappers = rows
-      .filter((r) => r.open >= 5 && r.open <= 150 && r.avgVolume >= 50_000 && !LEVERAGED.test(r.name))
+      .filter((r) => r.open >= 5 && r.open <= 150 && r.avgVolume >= MIN_GAP_AVGVOL && !LEVERAGED.test(r.name))
       .sort((a, b) => Math.abs(meta.get(b.symbol)!.gapPct) - Math.abs(meta.get(a.symbol)!.gapPct))
-      .slice(0, 25);
+      .slice(0, N_GAP);
     const liquid = rows
       .filter((r) => r.open >= 5 && !LEVERAGED.test(r.name))
       .sort((a, b) => b.avgVolume * b.open - a.avgVolume * a.open)
-      .slice(0, 15);
+      .slice(0, N_LIQUID);
     for (const r of gappers) meta.get(r.symbol)!.tags.push('gap');
     for (const r of liquid) meta.get(r.symbol)!.tags.push('liquid');
     for (const s of ['SPY', 'QQQ']) meta.get(s)?.tags.push('index');

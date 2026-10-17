@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>התקדמות המחקר</title>
+  <style>
+    :root { --bg: #070a0e; --panel: #0e131a; --line: #1c242e; --text: #d6dde4; --muted: #6e7c8a; --up: #26a69a; --down: #ef5350; --accent: #4c8dff; --warn: #f0b90b; color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, 'Segoe UI', sans-serif; padding: 16px; }
+    .wrap { max-width: 980px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+    h1 { font-size: 20px; margin: 0; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+    .big { font-size: 40px; font-weight: 700; }
+    .bar { height: 12px; background: #151c24; border-radius: 6px; overflow: hidden; }
+    .bar > div { height: 100%; background: var(--accent); transition: width 0.6s; }
+    .bar.big-bar { height: 22px; border-radius: 11px; }
+    .stage { display: grid; grid-template-columns: 220px 1fr 64px; gap: 10px; align-items: center; padding: 6px 0; }
+    .stage .detail { grid-column: 1 / -1; color: var(--muted); font-size: 12px; margin-top: -4px; }
+    .pct { text-align: start; font-variant-numeric: tabular-nums; direction: ltr; }
+    .muted { color: var(--muted); }
+    .agents { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+    .agent { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; font-size: 13px; display: flex; justify-content: space-between; gap: 6px; }
+    .agent .st { font-size: 12px; white-space: nowrap; }
+    .pending .st { color: var(--muted); }
+    .running { border-color: #2a4d7a; }
+    .running .st { color: var(--accent); }
+    .done .st { color: var(--muted); }
+    .pass { border-color: #134a44; background: #0f2a26; }
+    .pass .st { color: var(--up); font-weight: 700; }
+    .fail .st { color: var(--down); }
+    @media (max-width: 640px) { .stage { grid-template-columns: 1fr 56px; } .stage .label { grid-column: 1 / -1; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>התקדמות מחקר האסטרטגיות</h1>
+    <div class="panel">
+      <div class="muted">התקדמות כללית</div>
+      <div class="big" id="overall">—</div>
+      <div class="bar big-bar"><div id="overallBar" style="width:0"></div></div>
+      <div class="muted" id="summary" style="margin-top:8px"></div>
+    </div>
+    <div class="panel" id="stages"></div>
+    <div class="panel">
+      <div style="margin-bottom:8px"><b>הסוכנים</b> <span class="muted" id="agentsCount"></span></div>
+      <div class="agents" id="agents"></div>
+    </div>
+    <div class="muted" id="updated"></div>
+  </div>
+  <script>
+    const STATUS = { pending: 'ממתין', running: 'עובד…', done: 'סיים' };
+    const fmt = (n) => `${n.toFixed(1)}%`;
+    const time = new Intl.DateTimeFormat('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    async function load() {
+      try {
+        const r = await fetch('/api/research/progress', { cache: 'no-store' });
+        const d = await r.json();
+        document.getElementById('overall').textContent = fmt(d.overall);
+        document.getElementById('overallBar').style.width = d.overall + '%';
+        document.getElementById('summary').textContent = d.passed ? `אסטרטגיות שעברו את כל הבדיקות עד עכשיו: ${d.passed}` : 'עדיין אין אסטרטגיה שעברה את כל הבדיקות';
+        document.getElementById('stages').innerHTML = d.stages.map((s) => `
+          <div class="stage"><div class="label">${s.label}</div><div class="bar"><div style="width:${s.pct}%"></div></div><div class="pct">${fmt(s.pct)}</div><div class="detail">${s.detail}</div></div>`).join('');
+        const done = d.agents.filter((a) => a.status === 'done').length;
+        document.getElementById('agentsCount').textContent = `(${done} מתוך ${d.agents.length} סיימו)`;
+        document.getElementById('agents').innerHTML = d.agents.map((a) => {
+          const cls = a.status === 'done' ? (a.passed ? 'done pass' : 'done fail') : a.status;
+          const st = a.status === 'done' ? (a.passed ? 'עבר ✓' : 'לא עבר') : STATUS[a.status];
+          return `<div class="agent ${cls}" title="${a.note ?? ''}"><span>${a.label}</span><span class="st">${st}</span></div>`;
+        }).join('');
+        document.getElementById('updated').textContent = `עודכן ${time.format(new Date(d.updatedAt))} · מתעדכן לבד כל 5 שניות`;
+      } catch (e) {
+        document.getElementById('updated').textContent = 'אין חיבור לשרת המערכת. ודא שהיא פועלת (הסמל בשולחן העבודה).';
+      }
+    }
+    load();
+    setInterval(load, 5000);
+  </script>
+</body>
+</html>
