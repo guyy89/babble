@@ -11,14 +11,23 @@ interface AlpacaCreds {
 }
 
 const REST = 'https://data.alpaca.markets/v2';
+/** During market hours, no quote or trade for this long means the stream is dead. */
+const STALE_MS = 90_000;
 
 export class AlpacaFeed extends BaseFeed {
   readonly name = 'alpaca';
   private ws?: WebSocket;
   private stopped = false;
   private reconnectDelay = 1000;
+  private lastData = Date.now();
+  private watchdog?: NodeJS.Timeout;
 
-  constructor(symbols: string[], private readonly creds: AlpacaCreds) {
+  /**
+   * marketOpen: while it returns true, a stream that delivers no quote or trade for STALE_MS is treated
+   * as dead and replaced, because a half-open connection never fires 'close' (seen live on 2026-10-19:
+   * prices froze for six hours). Emits 'reconnect' (message) when that happens.
+   */
+  constructor(symbols: string[], private readonly creds: AlpacaCreds, private readonly marketOpen: () => boolean = () => false) {
     super(symbols);
     if (!creds.keyId || !creds.secretKey) {
       throw new Error('DATA_SOURCE=alpaca requires ALPACA_KEY_ID and ALPACA_SECRET_KEY');
@@ -33,11 +42,36 @@ export class AlpacaFeed extends BaseFeed {
     await Promise.all(this.symbolList.map((s) => this.loadHistory(s)));
     await this.loadSnapshots(this.symbolList);
     this.connect();
+    this.watchdog = setInterval(() => void this.checkStale(), 15_000);
   }
 
   stop(): void {
     this.stopped = true;
+    if (this.watchdog) clearInterval(this.watchdog);
     this.ws?.close();
+  }
+
+  private async checkStale(): Promise<void> {
+    if (this.stopped || !this.symbolList.length || !this.marketOpen()) return;
+    const silentMs = Date.now() - this.lastData;
+    if (silentMs < STALE_MS) return;
+    const msg = `לא הגיעו מחירים חיים ${Math.round(silentMs / 1000)} שניות. מתחבר מחדש לאלפקה`;
+    console.warn(`[alpaca] no data for ${Math.round(silentMs / 1000)}s, replacing the stream`);
+    this.emit('reconnect', msg);
+    this.lastData = Date.now(); // give the new connection a full window before trying again
+    const old = this.ws;
+    if (old) {
+      old.onclose = null;
+      old.onmessage = null;
+      old.onerror = null;
+      try { old.close(); } catch { /* already dead */ }
+    }
+    this.connect();
+    try {
+      await this.loadSnapshots(this.symbolList); // bring every price up to date right away
+    } catch (err) {
+      console.error('[alpaca] snapshot refresh failed', err);
+    }
   }
 
   private async loadHistory(symbol: string): Promise<void> {
@@ -143,6 +177,7 @@ export class AlpacaFeed extends BaseFeed {
       case 'success':
         if (m.msg === 'authenticated') {
           this.reconnectDelay = 1000;
+          this.lastData = Date.now();
           if (this.symbolList.length) this.ws?.send(JSON.stringify({ action: 'subscribe', quotes: this.symbolList, trades: this.symbolList }));
         }
         break;
@@ -150,11 +185,13 @@ export class AlpacaFeed extends BaseFeed {
         console.error(`[alpaca] ${m.code}: ${m.msg}`);
         break;
       case 'q':
+        this.lastData = Date.now();
         if (m.bp > 0 && m.ap > 0) {
           this.publishQuote({ symbol: m.S, bid: m.bp, ask: m.ap, bidSize: m.bs, askSize: m.as, last: 0, ts: Date.parse(m.t) });
         }
         break;
       case 't':
+        this.lastData = Date.now();
         this.publishTrade({ symbol: m.S, price: m.p, size: m.s, ts: Date.parse(m.t) });
         break;
     }

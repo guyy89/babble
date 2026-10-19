@@ -210,6 +210,11 @@ export class XsMomBot extends EventEmitter {
     return day.done ? 'היום הסתיים' : `מחזיק ${day.legs.length} פוזיציות עד הסגירה`;
   }
 
+  /** An outside event worth keeping in the robot's log (e.g. the data stream was reconnected). */
+  note(msg: string): void {
+    this.log(msg);
+  }
+
   private log(msg: string): void {
     this.s.log.unshift({ ts: this.now(), msg });
     if (this.s.log.length > LOG_KEEP) this.s.log.length = LOG_KEEP;

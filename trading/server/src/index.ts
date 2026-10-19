@@ -30,7 +30,8 @@ const history = simulated ? undefined : new AlpacaHistory(config.alpaca, resolve
 const vclock = replaying ? new VirtualClock(nyToUtc(config.replay.date, OPEN_MINUTE) - 60_000, config.replay.speed) : undefined;
 const now = vclock?.now ?? Date.now;
 
-const alpaca = !simulated && !replaying ? new AlpacaFeed(symbols, config.alpaca) : undefined;
+// The feed's watchdog only judges silence during market hours; `clock` is created below and read later.
+const alpaca = !simulated && !replaying ? new AlpacaFeed(symbols, config.alpaca, () => clock.state().isOpen) : undefined;
 const replay = replaying ? new ReplayFeed(symbols, config.replay.date, vclock!, (s) => history!.minutes(s, config.replay.date), true) : undefined;
 const feed: MarketDataFeed = alpaca ?? replay ?? new SimFeed(symbols);
 
@@ -149,6 +150,10 @@ const xsBot = new XsMomBot(
   simulated || replaying ? 'הרובוט עובד רק עם נתוני שוק חיים מאלפקה' : undefined, now,
 );
 xsBot.start(5000);
+alpaca?.on('reconnect', (msg: string) => {
+  svc.notice('warn', msg);
+  xsBot.note(msg);
+});
 
 const server = createApiServer(svc, { fees: config.paper.fees, risk: config.risk }, { movers, scan, news }, bot,
   replaying ? { date: config.replay.date, speed: config.replay.speed } : undefined, xsBot);
