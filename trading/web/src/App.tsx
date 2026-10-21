@@ -137,6 +137,7 @@ export function App() {
         <div className="spacer" />
         {a && (
           <div className="acct">
+            <span className="acct-label">חשבון ידני</span>
             <Stat label="הון" value={money(a.equity)} />
             <Stat label="רווח/הפסד היום" value={signed(a.dayPnl)} cls={pnlClass(a.dayPnl)} />
             <Stat label="ממומש" value={signed(a.realizedPnlToday)} cls={pnlClass(a.realizedPnlToday)} />
@@ -145,6 +146,13 @@ export function App() {
             {a.marginModel === 'pdt' && (
               <Stat label="עסקאות יומיות (5 ימים)" value={`${a.dayTradeCount}${a.equity < 25000 && a.accountType === 'margin' ? ' / 3' : ''}`} />
             )}
+          </div>
+        )}
+        {state.xsbot?.account && (
+          <div className="acct acct-bot">
+            <span className="acct-label">חשבון רובוט</span>
+            <Stat label="הון" value={money(state.xsbot.account.equity)} />
+            <Stat label="רווח/הפסד היום" value={signed(state.xsbot.account.dayPnl)} cls={pnlClass(state.xsbot.account.dayPnl)} />
           </div>
         )}
         <button onClick={() => setHelp(true)} title="מקש ?">קיצורי מקלדת</button>
@@ -177,7 +185,7 @@ export function App() {
       )}
 
       <Blotter positions={state.positions} orders={orders} fills={state.fills} onSelect={selectSymbol}
-        symbol={symbol} quote={symbol ? state.quotes[symbol] : undefined} bot={state.bot} />
+        symbol={symbol} quote={symbol ? state.quotes[symbol] : undefined} bot={state.bot} xsbot={state.xsbot} />
 
       <div className="toasts">
         {localNotice && (

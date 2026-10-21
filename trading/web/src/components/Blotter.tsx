@@ -3,8 +3,9 @@ import { api } from '../api';
 import { money, pnlClass, price, signed, time } from '../format';
 import { orderKind, SIDE, STATUS } from '../he';
 import type { Fill, Order, Position, Quote } from '../store';
-import type { BotStatus } from '../api';
+import type { BotStatus, XsStatus } from '../api';
 import { BotPanel } from './BotPanel';
+import { XsBotPanel } from './XsBotPanel';
 import { Journal } from './Journal';
 import { News } from './News';
 import { Tape } from './Tape';
@@ -17,21 +18,25 @@ interface Props {
   symbol?: string;
   quote?: Quote;
   bot?: BotStatus;
+  xsbot?: XsStatus;
 }
 
-type Tab = 'positions' | 'open' | 'orders' | 'fills' | 'journal' | 'tape' | 'news' | 'bot';
+type Tab = 'positions' | 'open' | 'orders' | 'fills' | 'journal' | 'tape' | 'news' | 'bot' | 'xsbot';
 
 const OPEN = new Set(['new', 'partially_filled', 'held']);
 
-export function Blotter({ positions, orders, fills, onSelect, symbol, quote, bot }: Props) {
-  const [tab, setTab] = useState<Tab>('positions');
+export function Blotter({ positions, orders, fills, onSelect, symbol, quote, bot, xsbot }: Props) {
+  const [tab, setTab] = useState<Tab>('xsbot');
   const open = orders.filter((o) => OPEN.has(o.status));
   const openPositions = positions.filter((p) => p.qty !== 0);
 
   return (
     <div className="panel blotter">
       <div className="tabs">
-        <button className={tab === 'positions' ? 'on' : ''} onClick={() => setTab('positions')}>פוזיציות ({openPositions.length})</button>
+        <button className={`${tab === 'xsbot' ? 'on' : ''} ${xsbot?.enabled ? 'bot-on' : ''}`} onClick={() => setTab('xsbot')}>
+          רובוט מומנטום{xsbot?.today && !xsbot.today.done ? ` (${xsbot.today.legs.length} פוזיציות)` : ''}
+        </button>
+        <button className={tab === 'positions' ? 'on' : ''} onClick={() => setTab('positions')}>פוזיציות ידניות ({openPositions.length})</button>
         <button className={tab === 'open' ? 'on' : ''} onClick={() => setTab('open')}>פקודות פתוחות ({open.length})</button>
         <button className={tab === 'orders' ? 'on' : ''} onClick={() => setTab('orders')}>כל הפקודות</button>
         <button className={tab === 'fills' ? 'on' : ''} onClick={() => setTab('fills')}>ביצועים</button>
@@ -39,7 +44,7 @@ export function Blotter({ positions, orders, fills, onSelect, symbol, quote, bot
         <button className={tab === 'tape' ? 'on' : ''} onClick={() => setTab('tape')}>סרט עסקאות</button>
         <button className={tab === 'news' ? 'on' : ''} onClick={() => setTab('news')}>חדשות</button>
         <button className={`${tab === 'bot' ? 'on' : ''} ${bot?.enabled ? 'bot-on' : ''}`} onClick={() => setTab('bot')}>
-          רובוט{bot?.enabled ? ' (פעיל)' : ''}
+          רובוט ישן{bot?.enabled ? ' (פעיל)' : ''}
         </button>
         <span className="spacer" />
         {tab === 'open' && open.length > 0 && <button className="danger" onClick={() => api.cancelAll()}>בטל הכל</button>}
@@ -72,6 +77,7 @@ export function Blotter({ positions, orders, fills, onSelect, symbol, quote, bot
         {tab === 'tape' && <Tape symbol={symbol} quote={quote} />}
         {tab === 'news' && <News symbol={symbol} />}
         {tab === 'bot' && <BotPanel status={bot} onSelect={onSelect} />}
+        {tab === 'xsbot' && <XsBotPanel status={xsbot} onSelect={onSelect} />}
         {tab === 'fills' && (
           <table>
             <thead><tr><th>שעה</th><th>מניה</th><th>צד</th><th>כמות</th><th>מחיר</th><th>עמלה</th><th>אגרות רגולציה</th></tr></thead>

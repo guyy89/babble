@@ -133,6 +133,20 @@ export interface XsStatus extends XsState {
   unavailableReason?: string;
   summary: { days: number; pnl: number; r: number; peakR: number; drawdownR: number; openPnl: number; verdict: string };
   account?: { equity: number; dayPnl: number };
+  /** Today's basket, leg by leg: what is invested and the live or final P&L. */
+  today?: { date: string; done: boolean; takeProfit: boolean; legs: XsLegView[] };
+}
+
+export interface XsLegView {
+  symbol: string;
+  side: 'long' | 'short';
+  qty: number;
+  entry?: number;
+  invested?: number;
+  last?: number;
+  pnl?: number;
+  open: boolean;
+  note?: string;
 }
 
 const LOG_KEEP = 300;
@@ -200,18 +214,27 @@ export class XsMomBot extends EventEmitter {
     let cum = 0, peak = 0;
     for (const d of done) { cum += d.r ?? 0; peak = Math.max(peak, cum); }
     const pnl = done.reduce((a, d) => a + (d.pnl ?? 0), 0);
-    const today = this.s.days.find((d) => d.date === this.svc.clock.nyDate() && !d.done);
+    const latest = this.s.days.at(-1);
+    const pos = await this.svc.broker.getPositions();
     let openPnl = 0;
-    if (today) {
-      const pos = await this.svc.broker.getPositions();
-      for (const l of today.legs) openPnl += pos.find((x) => x.symbol === l.symbol)?.unrealizedPnl ?? 0;
-    }
+    const legs: XsLegView[] = (latest?.legs ?? []).map((l) => {
+      const p = pos.find((x) => x.symbol === l.symbol);
+      const open = !!p && p.qty !== 0 && !latest!.done;
+      if (open) openPnl += p!.unrealizedPnl;
+      const entry = l.fillPx;
+      return {
+        symbol: l.symbol, side: l.side, qty: l.qty, entry, invested: entry ? round2(entry * l.qty) : undefined,
+        last: p?.marketPrice, pnl: open ? round2(p!.unrealizedPnl + p!.realizedPnlToday) : l.pnl ?? (p ? round2(p.realizedPnlToday) : undefined),
+        open, note: l.note,
+      };
+    });
     const acct = await this.svc.broker.getAccount();
     return {
       ...this.s, phase: this.phase(), params: this.p, decisionTime: israelTime(OPEN_MINUTE + this.p.decMin, this.now()),
       available: !this.unavailable, unavailableReason: this.unavailable,
       summary: { days: done.length, pnl: round2(pnl), r: round2(cum), peakR: round2(peak), drawdownR: round2(cum - peak), openPnl: round2(openPnl), verdict: this.verdict(done.length, cum) },
       account: { equity: acct.equity, dayPnl: acct.dayPnl },
+      today: latest ? { date: latest.date, done: latest.done, takeProfit: !!latest.takeProfitAt, legs } : undefined,
     };
   }
 

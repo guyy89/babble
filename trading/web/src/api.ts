@@ -1,11 +1,12 @@
 import type { BotStatus } from '../../server/src/bot/orbBot';
+import type { XsStatus } from '../../server/src/bot/xsMomBot';
 import type { Journal } from '../../server/src/journal';
 import type { Movers } from '../../server/src/market/movers';
 import type { ScanFilter, ScanRow } from '../../server/src/market/scanner';
 import type { SymbolInfo } from '../../server/src/market/symbolDirectory';
 import type { Bar, NewsItem, Order, OrderRequest } from '../../server/src/types';
 
-export type { BotStatus, Journal, Movers, NewsItem, OrderRequest, ScanFilter, ScanRow, SymbolInfo };
+export type { BotStatus, XsStatus, Journal, Movers, NewsItem, OrderRequest, ScanFilter, ScanRow, SymbolInfo };
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -25,6 +26,7 @@ export const api = {
     call<Order>('PATCH', `/orders/${id}`, changes),
   journal: () => call<Journal>('GET', '/journal'),
   setBot: (enabled: boolean) => call<BotStatus>('POST', '/bot', { enabled }),
+  setXsBot: (enabled: boolean) => call<XsStatus>('POST', '/xsbot', { enabled }),
   scan: (f: ScanFilter) =>
     call<ScanRow[]>('GET', `/scan?${new URLSearchParams(Object.entries(f).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => [k, String(v)]))}`),
   news: (symbol: string) => call<NewsItem[]>('GET', `/news/${encodeURIComponent(symbol)}`),

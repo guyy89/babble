@@ -1,6 +1,7 @@
 import { useEffect, useReducer } from 'react';
 import type { PublicSettings } from '../../server/src/api/server';
 import type { BotStatus } from '../../server/src/bot/orbBot';
+import type { XsStatus } from '../../server/src/bot/xsMomBot';
 import type { Account, Bar, Fill, Order, Position, Quote, Trade } from '../../server/src/types';
 
 export type { Account, Bar, Fill, Order, Position, PublicSettings, Quote, Trade };
@@ -35,6 +36,7 @@ export interface State {
   fills: Fill[];
   notices: Notice[];
   bot?: BotStatus;
+  xsbot?: XsStatus;
   /** Set when the server is replaying a recorded day. */
   replay?: { date: string; speed: number } | null;
 }
@@ -51,6 +53,7 @@ type Action =
   | { type: 'notice'; data: Notice }
   | { type: 'symbols'; data: WatchItem[] }
   | { type: 'bot'; data: BotStatus }
+  | { type: 'xsbot'; data: XsStatus }
   | { type: 'dismiss'; ts: number };
 
 const initial: State = {
@@ -86,6 +89,7 @@ function reducer(s: State, a: Action): State {
         orders: Object.fromEntries((d.orders as Order[]).map((o) => [o.id, o])),
         fills: d.fills,
         bot: d.bot,
+        xsbot: d.xsbot ?? undefined,
         replay: d.replay,
       };
     }
@@ -103,6 +107,8 @@ function reducer(s: State, a: Action): State {
       return { ...s, clock: a.data };
     case 'bot':
       return { ...s, bot: a.data };
+    case 'xsbot':
+      return { ...s, xsbot: a.data };
     case 'symbols':
       return { ...s, ...watch(a.data) };
     case 'notice':

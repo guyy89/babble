@@ -62,7 +62,9 @@ header {
 .badge.live { color: #fff; background: var(--down); border-color: var(--down); }
 .badge.open { color: var(--up); border-color: #134a44; }
 .badge.closed { color: var(--down); border-color: #4a2224; }
-.acct { display: flex; gap: 18px; margin-inline-end: 10px; }
+.acct { display: flex; gap: 18px; margin-inline-end: 10px; align-items: center; }
+.acct-label { font-size: 12px; font-weight: 700; color: var(--muted); padding-inline-end: 2px; }
+.acct-bot { padding-inline-start: 14px; border-inline-start: 1px solid var(--line, #1c242e); }
 .stat { display: flex; flex-direction: column; align-items: flex-end; }
 .stat span { font-size: 11px; color: var(--muted); }
 .stat b { font-size: 14px; }

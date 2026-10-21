@@ -145,6 +145,6 @@ export interface Account {
 }
 
 export interface ServerEvent {
-  type: 'quote' | 'bar' | 'trade' | 'order' | 'fill' | 'account' | 'positions' | 'clock' | 'notice' | 'symbols' | 'bot';
+  type: 'quote' | 'bar' | 'trade' | 'order' | 'fill' | 'account' | 'positions' | 'clock' | 'notice' | 'symbols' | 'bot' | 'xsbot';
   data: unknown;
 }

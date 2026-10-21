@@ -203,6 +203,7 @@ export function createApiServer(
         orders: await broker.getOrders('all'),
         fills: (await broker.getFills()).slice(0, 200),
         bot: bot.status(),
+        xsbot: xsBot ? await xsBot.status() : null,
         replay: replay ? { date: replay.date, speed: replay.speed } : null,
       },
     });
@@ -212,6 +213,12 @@ export function createApiServer(
   });
 
   bot.on('status', (status) => svc.emit('event', { type: 'bot', data: status }));
+  // The momentum robot's account and positions, on the main screen: on every change and every 3 s for live P&L.
+  if (xsBot) {
+    const pushXs = async () => svc.emit('event', { type: 'xsbot', data: await xsBot.status() });
+    xsBot.on('changed', () => void pushXs());
+    setInterval(() => void pushXs(), 3000);
+  }
 
   svc.on('event', (ev) => {
     const msg = JSON.stringify(ev);
