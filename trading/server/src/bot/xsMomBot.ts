@@ -98,6 +98,8 @@ export interface XsLeg {
   fillPx?: number;
   pnl?: number;
   note?: string;
+  /** The robot subscribed this symbol itself; it is released again once the day is booked. */
+  addedByBot?: boolean;
 }
 
 export interface XsDay {
@@ -318,6 +320,7 @@ export class XsMomBot extends EventEmitter {
       const leg: XsLeg = { symbol: b.symbol, side: b.side, qty: b.qty, score: round2(b.score), decisionPx: b.px };
       day.legs.push(leg);
       try {
+        leg.addedByBot = !this.svc.feed.symbols().includes(b.symbol);
         await this.svc.addSymbol(b.symbol);
         const order = await this.svc.submitOrder({
           symbol: b.symbol, side: b.side === 'long' ? 'buy' : 'sell', qty: b.qty, type: 'market', tif: 'day',
@@ -388,6 +391,9 @@ export class XsMomBot extends EventEmitter {
       touched = true;
       this.log(`יום ${day.date} הסתיים: ${total >= 0 ? 'רווח' : 'הפסד'} של $${Math.abs(total).toFixed(2)} נטו (${day.r}R)`);
       this.checkStop();
+      // The free data plan streams a limited number of symbols, so give back the ones the robot added.
+      const added = day.legs.filter((l) => l.addedByBot).map((l) => l.symbol);
+      if (added.length) this.emit('release', added);
     }
     if (touched) this.changed();
   }

@@ -21,6 +21,9 @@ export class AlpacaFeed extends BaseFeed {
   private reconnectDelay = 1000;
   private lastData = Date.now();
   private watchdog?: NodeJS.Timeout;
+  private resubscribes = 0;
+  private confirmed = new Set<string>();
+  private confirmTimer?: NodeJS.Timeout;
 
   /**
    * marketOpen: while it returns true, a stream that delivers no quote or trade for STALE_MS is treated
@@ -48,7 +51,20 @@ export class AlpacaFeed extends BaseFeed {
   stop(): void {
     this.stopped = true;
     if (this.watchdog) clearInterval(this.watchdog);
+    if (this.confirmTimer) clearTimeout(this.confirmTimer);
     this.ws?.close();
+  }
+
+  private checkConfirmed(): void {
+    const missing = this.symbolList.filter((s) => !this.confirmed.has(s));
+    if (!missing.length) return;
+    if (this.resubscribes < 2) {
+      this.resubscribes++;
+      this.emit('notice', `אלפקה לא שולחת מחירים עבור ${missing.join(', ')}. נרשם אליהן שוב`);
+      this.sendIfOpen(JSON.stringify({ action: 'subscribe', quotes: missing, trades: missing }));
+    } else {
+      this.emit('notice', `אלפקה לא שולחת מחירים עבור ${missing.join(', ')} (ייתכן שהגענו לתקרת המניות בחשבון החינמי). כדאי להסיר מניות מרשימת המעקב`);
+    }
   }
 
   private async checkStale(): Promise<void> {
@@ -178,11 +194,21 @@ export class AlpacaFeed extends BaseFeed {
         if (m.msg === 'authenticated') {
           this.reconnectDelay = 1000;
           this.lastData = Date.now();
+          this.resubscribes = 0;
           if (this.symbolList.length) this.ws?.send(JSON.stringify({ action: 'subscribe', quotes: this.symbolList, trades: this.symbolList }));
         }
         break;
       case 'error':
         console.error(`[alpaca] ${m.code}: ${m.msg}`);
+        this.emit('notice', `שגיאה מאלפקה (${m.code}): ${m.msg}`);
+        break;
+      case 'subscription':
+        // Alpaca confirms the full list it is actually streaming; anything missing gets no prices
+        // (e.g. 405 "symbol limit exceeded" on the free plan). Checked once things settle, since a
+        // burst of subscribe/unsubscribe messages produces a confirmation for each.
+        this.confirmed = new Set(m.quotes ?? []);
+        if (this.confirmTimer) clearTimeout(this.confirmTimer);
+        this.confirmTimer = setTimeout(() => this.checkConfirmed(), 3000);
         break;
       case 'q':
         this.lastData = Date.now();
@@ -206,4 +232,4 @@ type AlpacaMsg =
   | { T: 'error'; code: number; msg: string }
   | ({ T: 'q'; S: string } & AQuote)
   | { T: 't'; S: string; p: number; s: number; t: string }
-  | { T: 'subscription' };
+  | { T: 'subscription'; quotes?: string[]; trades?: string[] };

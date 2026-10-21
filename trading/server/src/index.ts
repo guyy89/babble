@@ -153,10 +153,22 @@ const xsBot = new XsMomBot(
   simulated || replaying ? 'הרובוט עובד רק עם נתוני שוק חיים מאלפקה' : undefined, now, xsCloseFee,
 );
 xsBot.start(5000);
-alpaca?.on('reconnect', (msg: string) => {
-  svc.notice('warn', msg);
-  xsBot.note(msg);
+// Symbols the robot added only for its basket leave the watchlist (and the data stream) after its day,
+// unless the manual account now holds them.
+xsBot.on('release', async (symbols: string[]) => {
+  const positions = await broker.getPositions();
+  const orders = await broker.getOrders('open');
+  for (const s of symbols) {
+    if (positions.some((p) => p.symbol === s && p.qty !== 0) || orders.some((o) => o.symbol === s)) continue;
+    try { await svc.removeSymbol(s); } catch { /* still in use */ }
+  }
 });
+for (const ev of ['reconnect', 'notice']) {
+  alpaca?.on(ev, (msg: string) => {
+    svc.notice('warn', msg);
+    xsBot.note(msg);
+  });
+}
 
 const server = createApiServer(svc, { fees: config.paper.fees, risk: config.risk }, { movers, scan, news }, bot,
   replaying ? { date: config.replay.date, speed: config.replay.speed } : undefined, xsBot);
