@@ -4,6 +4,7 @@ import { AlpacaHistory } from './backtest/history.js';
 import { candidateRows, nyToUtc } from './backtest/universe.js';
 import { OrbBot, type BotState } from './bot/orbBot.js';
 import { atr14, XS_EXCLUDED, XS_PARAMS, XsMomBot, type XsState } from './bot/xsMomBot.js';
+import { orderCommission, regulatoryFees } from './broker/fees.js';
 import { JsonFileStore } from './broker/stateStore.js';
 import { PaperBroker, type PaperState } from './broker/paperBroker.js';
 import { config } from './config.js';
@@ -100,7 +101,9 @@ bot.start(replaying ? Math.max(50, 5000 / Math.max(1, config.replay.speed)) : 50
 // ---------------------------------------------------------------- momentum-basket robot (own paper account)
 // Forward test of the research candidate r2_xsmom on a separate paper account, so its result is measured
 // cleanly and never mixes with manual practice. Same market data and fees; its own risk limits (no stop).
-const xsParams = { ...XS_PARAMS, riskPerLeg: config.xsmom.riskPerLeg };
+const xsParams = { ...XS_PARAMS, riskPerLeg: config.xsmom.riskPerLeg, dayTakeProfit: config.xsmom.dayTakeProfit };
+const xsCloseFee = (qty: number, price: number, side: 'buy' | 'sell') =>
+  orderCommission(qty, qty * price, config.paper.fees) + regulatoryFees(side, qty, qty * price, config.paper.fees);
 const xsBroker = new PaperBroker(feed, clock, { ...config.paper, startingCash: config.xsmom.startingCash },
   replaying ? undefined : new JsonFileStore<PaperState>(resolve(config.dataDir, `paper-xsmom-${config.dataSource}.json`)), now);
 const xsSvc = new TradingService(feed, xsBroker, clock, {
@@ -147,7 +150,7 @@ async function xsPrices(symbols: string[]) {
 const xsBot = new XsMomBot(
   xsSvc, xsPrepare, xsPrices, xsParams,
   replaying ? undefined : new JsonFileStore<XsState>(resolve(config.dataDir, 'xsmom-bot.json')),
-  simulated || replaying ? 'הרובוט עובד רק עם נתוני שוק חיים מאלפקה' : undefined, now,
+  simulated || replaying ? 'הרובוט עובד רק עם נתוני שוק חיים מאלפקה' : undefined, now, xsCloseFee,
 );
 xsBot.start(5000);
 alpaca?.on('reconnect', (msg: string) => {

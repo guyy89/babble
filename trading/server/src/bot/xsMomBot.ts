@@ -24,11 +24,16 @@ export interface XsParams {
   evalDays: number;
   confirmR: number;
   maxDrawdownR: number;
+  /** Close the whole basket once the day's net P&L (after fees, incl. the fees to close) reaches this many $. 0 = off. */
+  dayTakeProfit: number;
 }
 
 export const XS_PARAMS: XsParams = {
-  K: 4, decMin: 15, lateMin: 4, stopK: 0.5, riskPerLeg: 200, nLiquid: 20, evalDays: 60, confirmR: 17, maxDrawdownR: 25,
+  K: 4, decMin: 15, lateMin: 4, stopK: 0.5, riskPerLeg: 200, nLiquid: 20, evalDays: 60, confirmR: 17, maxDrawdownR: 25, dayTakeProfit: 0,
 };
+
+/** The rules that define one forward test; changing any of them starts a new test. */
+const testSignature = (p: XsParams) => JSON.stringify({ K: p.K, decMin: p.decMin, stopK: p.stopK, riskPerLeg: p.riskPerLeg, nLiquid: p.nLiquid, dayTakeProfit: p.dayTakeProfit });
 
 /** One stock's inputs at the decision minute. */
 export interface XsInput {
@@ -103,6 +108,8 @@ export interface XsDay {
   /** Net of costs, in $ and in R (= $ / risk per leg). */
   pnl?: number;
   r?: number;
+  /** When the basket was closed early by the daily take-profit. */
+  takeProfitAt?: number;
 }
 
 export interface XsState {
@@ -110,6 +117,10 @@ export interface XsState {
   days: XsDay[];
   halted?: string;
   log: { ts: number; msg: string }[];
+  /** testSignature() of the rules the current days were traded with. */
+  signature?: string;
+  /** Earlier tests, kept when the rules changed. */
+  archive?: { signature: string; endedAt: number; days: XsDay[] }[];
 }
 
 export interface XsStatus extends XsState {
@@ -146,9 +157,22 @@ export class XsMomBot extends EventEmitter {
     private readonly store?: StateStore<XsState>,
     private readonly unavailable?: string,
     private readonly now: () => number = Date.now,
+    /** Fees to close a position (regulatory fees on sales), for the take-profit check. */
+    private readonly closeFee: (qty: number, price: number, side: 'buy' | 'sell') => number = () => 0,
   ) {
     super();
     this.s = store?.load() ?? { enabled: false, days: [], log: [] };
+    // New rules = a new test: earlier days are archived, not mixed into the new count.
+    const sig = testSignature(p);
+    const stored = this.s.signature ?? testSignature({ ...p, dayTakeProfit: 0 }); // state from before signatures existed
+    if (stored !== sig && this.s.days.length) {
+      (this.s.archive ??= []).push({ signature: stored, endedAt: this.now(), days: this.s.days });
+      this.s.days = [];
+      this.s.halted = undefined;
+      this.s.signature = sig;
+      this.log(`הכללים השתנו${p.dayTakeProfit ? ` (יעד רווח יומי $${p.dayTakeProfit})` : ''}: הבדיקה מתחילה מחדש. הימים הקודמים נשמרו בארכיון`);
+    }
+    this.s.signature = sig;
   }
 
   start(intervalMs = 5000): void {
@@ -207,7 +231,9 @@ export class XsMomBot extends EventEmitter {
     const day = this.s.days.find((d) => d.date === clock.nyDate);
     if (!day) return m < OPEN_MINUTE + this.p.decMin ? `ממתין לרגע ההחלטה (${israelTime(OPEN_MINUTE + this.p.decMin, this.now())})` : 'היום לא נכנס (הוחמץ חלון הכניסה)';
     if (!day.legs.length) return 'היום אין עסקאות';
-    return day.done ? 'היום הסתיים' : `מחזיק ${day.legs.length} פוזיציות עד הסגירה`;
+    if (day.done) return day.takeProfitAt ? 'היום הסתיים ביעד הרווח' : 'היום הסתיים';
+    if (day.takeProfitAt) return 'הגיע ליעד הרווח, סוגר פוזיציות';
+    return `מחזיק ${day.legs.length} פוזיציות${this.p.dayTakeProfit ? ` עד רווח של $${this.p.dayTakeProfit} או עד הסגירה` : ' עד הסגירה'}`;
   }
 
   /** An outside event worth keeping in the robot's log (e.g. the data stream was reconnected). */
@@ -241,6 +267,8 @@ export class XsMomBot extends EventEmitter {
   private async step(): Promise<void> {
     // Results are settled even when the robot is switched off, so a day that was traded is always counted.
     await this.settle();
+    // Part of the strategy's exit, so it runs even if the robot was switched off after entering.
+    await this.takeProfit();
     if (!this.s.enabled || this.unavailable || this.s.halted) return;
     const clock = this.svc.clock.state();
     if (!clock.isOpen) return;
@@ -305,6 +333,32 @@ export class XsMomBot extends EventEmitter {
     this.changed();
   }
 
+  /** Once today's net P&L, after the fees it would cost to close, reaches dayTakeProfit, close the whole basket. */
+  private async takeProfit(): Promise<void> {
+    const tp = this.p.dayTakeProfit;
+    if (!(tp > 0)) return;
+    const clock = this.svc.clock.state();
+    if (!clock.isOpen) return;
+    const day = this.s.days.find((d) => d.date === clock.nyDate && !d.done && d.legs.length && !d.takeProfitAt);
+    if (!day) return;
+    const positions = (await this.svc.broker.getPositions()).filter((p) => p.qty !== 0 && day.legs.some((l) => l.symbol === p.symbol));
+    if (!positions.length) return;
+    const acct = await this.svc.broker.getAccount(); // the robot's own account: its day P&L is the basket's
+    const closing = positions.reduce((a, p) => a + this.closeFee(Math.abs(p.qty), p.marketPrice, p.qty > 0 ? 'sell' : 'buy'), 0);
+    const net = acct.dayPnl - closing;
+    if (net < tp) return;
+    day.takeProfitAt = this.now();
+    this.log(`הרווח של היום הגיע ל-$${net.toFixed(2)} נטו (היעד: $${tp}). סוגר את כל הפוזיציות`);
+    for (const p of positions) {
+      try {
+        await this.svc.broker.closePosition(p.symbol);
+      } catch (err) {
+        this.log(`${p.symbol}: הסגירה נכשלה: ${(err as Error).message}`);
+      }
+    }
+    this.changed();
+  }
+
   /** After the close (or once the positions are flat), record each open day's net result. */
   private async settle(): Promise<void> {
     const open = this.s.days.filter((d) => !d.done && d.legs.length);
@@ -319,7 +373,7 @@ export class XsMomBot extends EventEmitter {
         if (o && o.filledQty > 0 && leg.fillPx === undefined) { leg.fillPx = o.avgFillPrice; touched = true; }
       }
       const stillOpen = day.legs.some((l) => positions.some((p) => p.symbol === l.symbol && p.qty !== 0));
-      const finished = day.date < clock.nyDate || (!stillOpen && (clock.minutesToClose ?? 0) <= 5) || !clock.isOpen;
+      const finished = day.date < clock.nyDate || !!day.takeProfitAt || (!stillOpen && (clock.minutesToClose ?? 0) <= 5) || !clock.isOpen;
       if (!finished || stillOpen) continue;
       const journal = buildJournal((await this.svc.broker.getFills()).reverse(), orders);
       let total = 0;

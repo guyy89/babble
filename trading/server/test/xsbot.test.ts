@@ -61,7 +61,9 @@ describe('selectBasket', () => {
 const OPEN = Date.UTC(2026, 9, 14, 13, 30); // Wed 09:30 New York
 const at = (min: number, sec = 0) => OPEN + min * 60_000 + sec * 1000;
 
-async function setup(startMin: number) {
+let quoteAllOne: (symbol: string, price: number) => void = () => {};
+
+async function setup(startMin: number, over: Partial<typeof XS_PARAMS> = {}) {
   let now = at(startMin);
   const feed = new FakeFeed([]);
   const clock = new MarketClock(false, () => now);
@@ -78,9 +80,12 @@ async function setup(startMin: number) {
   await broker.start();
   const prepare = async () => rows().map(({ open: _o, px: _p, ...r }) => r);
   const prices = async () => Object.fromEntries(rows().map((r) => [r.symbol, { open: r.open, px: r.px }]));
-  const bot = new XsMomBot(svc, prepare, prices, XS_PARAMS, undefined, undefined, () => now);
+  const bot = new XsMomBot(svc, prepare, prices, { ...XS_PARAMS, ...over }, undefined, undefined, () => now);
   const quoteAll = (move = 0) => { for (const r of rows()) feed.tick(r.symbol, r.px * (1 + move), now); };
-  return { feed, broker, bot, set: (t: number) => { now = t; }, quoteAll };
+  quoteAllOne = (symbol, price) => feed.tick(symbol, price, now);
+  // A minimal in-memory store, for the rule-change test.
+  const feedStore = { data: undefined as unknown, load() { return this.data as never; }, save(v: unknown) { this.data = v; } };
+  return { feed, broker, bot, set: (t: number) => { now = t; }, quoteAll, feedStore };
 }
 
 describe('XsMomBot on a scripted day', () => {
@@ -112,6 +117,40 @@ describe('XsMomBot on a scripted day', () => {
     // No second basket the same day.
     set(at(386, 30)); await bot.tick();
     expect((await bot.status()).days).toHaveLength(1);
+  });
+
+  it('closes the whole basket once the day net reaches the take-profit, and books the day', async () => {
+    const { broker, bot, set, quoteAll } = await setup(0, { dayTakeProfit: 90 });
+    bot.setEnabled(true);
+    set(at(1)); quoteAll(); await bot.tick();
+    set(at(15, 3)); quoteAll(); await bot.tick();
+    expect((await broker.getPositions()).filter((p) => p.qty !== 0)).toHaveLength(8);
+
+    // Longs (S01–S04) up 3%, shorts (S09–S12) down 3%: well above $90.
+    set(at(60));
+    for (const r of rows()) {
+      const i = Number(r.symbol.slice(1));
+      quoteAllOne(r.symbol, r.px * (i <= 4 ? 1.03 : i >= 9 ? 0.97 : 1));
+    }
+    await bot.tick();
+    expect((await broker.getPositions()).filter((p) => p.qty !== 0)).toHaveLength(0);
+    set(at(60, 10)); await bot.tick();
+    const st = await bot.status();
+    expect(st.days[0].done).toBe(true);
+    expect(st.days[0].takeProfitAt).toBeDefined();
+    expect(st.days[0].pnl!).toBeGreaterThanOrEqual(90);
+    expect(st.log.some((l) => l.msg.includes('היעד'))).toBe(true);
+  });
+
+  it('starts a new test (archiving earlier days) when the rules change', async () => {
+    const { feedStore } = await setup(0);
+    feedStore.data = { enabled: true, days: [{ date: '2026-10-13', decidedAt: 0, legs: [], done: true, pnl: 5, r: 0.03 }], log: [] };
+    const bot2 = new XsMomBot({ clock: new MarketClock(false, () => at(0)) } as unknown as TradingService, async () => [], async () => ({}),
+      { ...XS_PARAMS, dayTakeProfit: 90 }, feedStore, undefined, () => at(0));
+    const st = (bot2 as any).s;
+    expect(st.days).toHaveLength(0);
+    expect(st.archive).toHaveLength(1);
+    expect(st.archive[0].days).toHaveLength(1);
   });
 
   it('does not enter late after a restart and does not count the missed day', async () => {

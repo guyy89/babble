@@ -83,7 +83,7 @@
       t.className = s.enabled ? 'off' : 'on';
       t.disabled = !s.available || (!!s.halted && !s.enabled);
       const p = s.params;
-      $('rules').textContent = `כל יום ב-${s.decisionTime} (שעון ישראל): קנייה של ${p.K} המניות הנזילות החזקות מהפתיחה ושורט של ${p.K} החלשות, סיכון $${p.riskPerLeg} למניה, בלי סטופ, סגירה 5 דקות לפני סוף המסחר. החלטה אחרי ${p.evalDays} ימים: ‎+${p.confirmR}R ומעלה = אושרה, 0 ומטה = נכשלה, ירידה של ${p.maxDrawdownR}R = עצירה.`;
+      $('rules').textContent = `כל יום ב-${s.decisionTime} (שעון ישראל): קנייה של ${p.K} המניות הנזילות החזקות מהפתיחה ושורט של ${p.K} החלשות, סיכון $${p.riskPerLeg} למניה, בלי סטופ${p.dayTakeProfit ? `, סגירת הכל כשהרווח היומי נטו מגיע ל-$${p.dayTakeProfit}, אחרת` : ','} סגירה 5 דקות לפני סוף המסחר. החלטה אחרי ${p.evalDays} ימים: ‎+${p.confirmR}R ומעלה = אושרה, 0 ומטה = נכשלה, ירידה של ${p.maxDrawdownR}R = עצירה.`;
       setVal('days', `${s.summary.days} / ${p.evalDays}`);
       setVal('r', sign(s.summary.r), s.summary.r);
       setVal('pnl', money(s.summary.pnl), s.summary.pnl);
