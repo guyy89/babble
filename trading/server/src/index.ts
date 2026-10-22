@@ -6,6 +6,8 @@ import { OrbBot, type BotState } from './bot/orbBot.js';
 import { atr14, XS_EXCLUDED, XS_PARAMS, XsMomBot, type XsState } from './bot/xsMomBot.js';
 import { orderCommission, regulatoryFees } from './broker/fees.js';
 import { JsonFileStore } from './broker/stateStore.js';
+import { AlpacaBroker } from './broker/alpacaBroker.js';
+import type { Broker } from './broker/broker.js';
 import { PaperBroker, type PaperState } from './broker/paperBroker.js';
 import { config } from './config.js';
 import { AlpacaFeed } from './market/alpacaFeed.js';
@@ -47,7 +49,10 @@ const clock = new MarketClock(simulated, now);
 
 // A replay always starts from a fresh account; the other modes keep their account between runs.
 const store = replaying ? undefined : new JsonFileStore<PaperState>(resolve(config.dataDir, `paper-${config.dataSource}.json`));
-const broker = new PaperBroker(feed, clock, config.paper, store, now);
+const useAlpaca = config.broker === 'alpaca-paper' && !simulated && !replaying;
+const broker: Broker = useAlpaca
+  ? new AlpacaBroker(config.alpaca, config.paper.fees, config.alpaca.tradingUrl, now)
+  : new PaperBroker(feed, clock, config.paper, store, now);
 
 const svc = new TradingService(feed, broker, clock, config.risk, directory, watchlistStore);
 await svc.start();
@@ -101,7 +106,7 @@ bot.start(replaying ? Math.max(50, 5000 / Math.max(1, config.replay.speed)) : 50
 // ---------------------------------------------------------------- momentum-basket robot
 // Forward test of the research candidate r2_xsmom, in the same paper account as manual trading (Guy: one
 // account, one screen). Its orders skip only the stop rule; it tracks its own P&L by its symbols.
-const xsParams = { ...XS_PARAMS, riskPerLeg: config.xsmom.riskPerLeg, dayTakeProfit: config.xsmom.dayTakeProfit };
+const xsParams = { ...XS_PARAMS, riskPerLeg: config.xsmom.riskPerLeg, dayTakeProfit: config.xsmom.dayTakeProfit, venue: broker.name };
 const xsCloseFee = (qty: number, price: number, side: 'buy' | 'sell') =>
   orderCommission(qty, qty * price, config.paper.fees) + regulatoryFees(side, qty, qty * price, config.paper.fees);
 const sipHistory = alpaca ? new AlpacaHistory({ ...config.alpaca, feed: 'sip' }, resolve(config.dataDir, 'backtest-cache')) : undefined;

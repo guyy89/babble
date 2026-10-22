@@ -26,14 +26,16 @@ export interface XsParams {
   maxDrawdownR: number;
   /** Close the whole basket once the day's net P&L (after fees, incl. the fees to close) reaches this many $. 0 = off. */
   dayTakeProfit: number;
+  /** Where orders execute (broker name); a different venue is a different forward test. */
+  venue: string;
 }
 
 export const XS_PARAMS: XsParams = {
-  K: 4, decMin: 15, lateMin: 4, stopK: 0.5, riskPerLeg: 200, nLiquid: 20, evalDays: 60, confirmR: 17, maxDrawdownR: 25, dayTakeProfit: 0,
+  K: 4, decMin: 15, lateMin: 4, stopK: 0.5, riskPerLeg: 200, nLiquid: 20, evalDays: 60, confirmR: 17, maxDrawdownR: 25, dayTakeProfit: 0, venue: 'paper',
 };
 
 /** The rules that define one forward test; changing any of them starts a new test. */
-const testSignature = (p: XsParams) => JSON.stringify({ account: 'main', K: p.K, decMin: p.decMin, stopK: p.stopK, riskPerLeg: p.riskPerLeg, nLiquid: p.nLiquid, dayTakeProfit: p.dayTakeProfit });
+const testSignature = (p: XsParams) => JSON.stringify({ account: 'main', venue: p.venue, K: p.K, decMin: p.decMin, stopK: p.stopK, riskPerLeg: p.riskPerLeg, nLiquid: p.nLiquid, dayTakeProfit: p.dayTakeProfit });
 
 /** One stock's inputs at the decision minute. */
 export interface XsInput {

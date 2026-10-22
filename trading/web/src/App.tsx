@@ -118,8 +118,8 @@ export function App() {
     <div className="app">
       <header>
         <div className="brand">מסחר יומי</div>
-        <span className={`badge ${state.broker === 'paper' ? 'paper' : 'live'}`}>
-          {state.broker === 'paper' ? 'מדומה' : 'כסף אמיתי'}
+        <span className={`badge ${state.broker === 'paper' || state.broker === 'alpaca-paper' ? 'paper' : 'live'}`}>
+          {state.broker === 'paper' ? 'מדומה' : state.broker === 'alpaca-paper' ? 'תרגול באלפקה' : 'כסף אמיתי'}
         </span>
         {state.replay ? (
           <span className="badge replay">

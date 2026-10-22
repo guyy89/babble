@@ -57,7 +57,8 @@ export const config = {
   dataSource: str('DATA_SOURCE', 'sim') as 'sim' | 'alpaca' | 'replay',
   // Replay a recorded day (needs Alpaca keys): REPLAY_DATE=YYYY-MM-DD, REPLAY_SPEED=× real time.
   replay: { date: str('REPLAY_DATE', ''), speed: num('REPLAY_SPEED', 5) },
-  broker: str('BROKER', 'paper') as 'paper',
+  // paper = local simulator; alpaca-paper = orders go to Alpaca's paper trading account (needs paper keys).
+  broker: str('BROKER', 'paper') as 'paper' | 'alpaca-paper',
   symbols: str('SYMBOLS', 'AAPL,MSFT,NVDA,TSLA,AMD,SPY,QQQ')
     .split(',')
     .map((s) => s.trim().toUpperCase())
