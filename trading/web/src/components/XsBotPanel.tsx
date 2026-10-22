@@ -14,7 +14,11 @@ export function XsBotPanel({ status, onSelect }: { status?: XsStatus; onSelect: 
   const legs = status.today?.legs ?? [];
   const invested = legs.reduce((a, l) => a + (l.invested ?? 0), 0);
   const legsPnl = legs.reduce((a, l) => a + (l.pnl ?? 0), 0);
-  const history = status.days.filter((d) => d.done).slice().reverse();
+  // Earlier tests (before a rule change) are shown too, marked, so the robot's whole record is in one table.
+  const history = [
+    ...(status.archive ?? []).flatMap((a) => a.days.filter((d) => d.done).map((d) => ({ ...d, archived: true }))),
+    ...status.days.filter((d) => d.done).map((d) => ({ ...d, archived: false })),
+  ].reverse();
 
   return (
     <div className="bot">
@@ -79,12 +83,12 @@ export function XsBotPanel({ status, onSelect }: { status?: XsStatus; onSelect: 
             <thead><tr><th>תאריך</th><th>פוזיציות</th><th>רווח/הפסד נטו</th><th>יחידות סיכון</th><th /></tr></thead>
             <tbody>
               {history.map((d) => (
-                <tr key={d.date}>
+                <tr key={`${d.date}-${d.archived}`} className={d.archived ? 'muted' : ''}>
                   <td>{d.date.split('-').reverse().join('/')}</td>
                   <td>{d.legs.length}</td>
                   <td className={pnlClass(d.pnl ?? 0)}>{signed(d.pnl ?? 0)}</td>
                   <td className={pnlClass(d.r ?? 0)}>{`${(d.r ?? 0) >= 0 ? '+' : ''}${d.r ?? 0}`}</td>
-                  <td className="muted small">{d.takeProfitAt ? 'יעד רווח' : ''}</td>
+                  <td className="muted small">{[d.takeProfitAt ? 'יעד רווח' : '', d.archived ? 'לפני האיחוד (לא בספירה)' : ''].filter(Boolean).join(' · ')}</td>
                 </tr>
               ))}
               {history.length === 0 && <tr><td colSpan={5} className="muted">עוד אין ימים שהסתיימו</td></tr>}

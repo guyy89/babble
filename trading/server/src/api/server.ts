@@ -125,10 +125,12 @@ export function createApiServer(
   app.get('/api/settings', (_req, res) => {
     res.json(settings);
   });
-  app.post('/api/account/reset', async (_req, res) => {
-    const resettable = broker as typeof broker & { reset?: () => Promise<void> };
+  app.post('/api/account/reset', async (req, res) => {
+    const resettable = broker as typeof broker & { reset?: (cash?: number) => Promise<void> };
     if (!resettable.reset) throw new BrokerError('אפשר לאפס רק חשבון מדומה', 409);
-    await resettable.reset();
+    // Optional starting cash (e.g. to carry over results); otherwise the configured STARTING_CASH.
+    const cash = Number(req.body?.cash);
+    await resettable.reset(Number.isFinite(cash) && cash > 0 ? Math.round(cash * 100) / 100 : undefined);
     const msg = await snapshot();
     for (const client of wss.clients) if (client.readyState === WebSocket.OPEN) client.send(msg);
     svc.notice('info', 'החשבון המדומה אופס');

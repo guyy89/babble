@@ -205,11 +205,11 @@ export class PaperBroker extends EventEmitter implements Broker {
     for (const symbol of Object.keys(this.s.positions)) await this.closePosition(symbol);
   }
 
-  /** Paper only: wipe positions, orders and history and start again with the configured cash. */
-  async reset(): Promise<void> {
+  /** Paper only: wipe positions, orders and history and start again with the configured cash (or `cash`). */
+  async reset(cash?: number): Promise<void> {
     this.orders.clear();
     this.resting.clear();
-    this.s = this.freshState();
+    this.s = this.freshState(cash);
     this.persist(true);
     this.emit('account');
   }
@@ -226,12 +226,12 @@ export class PaperBroker extends EventEmitter implements Broker {
     return q && this.execQuote(q);
   }
 
-  private freshState(): PaperState {
+  private freshState(cash = this.cfg.startingCash): PaperState {
     return {
       version: 1,
       nyDate: this.clock.nyDate(),
-      cash: this.cfg.startingCash,
-      dayStartEquity: this.cfg.startingCash,
+      cash,
+      dayStartEquity: cash,
       commissionsToday: 0,
       positions: {},
       orders: [],
