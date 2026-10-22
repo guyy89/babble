@@ -20,7 +20,8 @@ export class RiskManager {
     return this.cfg.maxDailyLoss > 0 && account.dayPnl <= -this.cfg.maxDailyLoss;
   }
 
-  check(req: OrderRequest, ctx: RiskContext): string | null {
+  /** noStopAllowed: the momentum robot trades without a stop by design; every other limit still applies. */
+  check(req: OrderRequest, ctx: RiskContext, noStopAllowed = false): string | null {
     const pos = ctx.position?.qty ?? 0;
     const qty = Number(req.qty);
     if (!Number.isFinite(qty) || qty <= 0) return null; // shape errors are the broker's to report
@@ -34,7 +35,7 @@ export class RiskManager {
     const price = req.limitPrice ?? req.stopPrice ?? (req.side === 'buy' ? ctx.quote?.ask : ctx.quote?.bid);
     if (!price) return null;
 
-    if (this.cfg.maxRiskPerTrade > 0) {
+    if (this.cfg.maxRiskPerTrade > 0 && !noStopAllowed) {
       const stop = req.stopLoss?.stopPrice;
       if (stop === undefined) {
         return `חובה סטופ בכל פוזיציה חדשה (סיכון של עד $${this.cfg.maxRiskPerTrade} לעסקה)`;

@@ -94,9 +94,8 @@ export const config = {
     maxOrderNotional: num('MAX_ORDER_NOTIONAL', 10000),
     flattenMinutesBeforeClose: num('FLATTEN_MINUTES_BEFORE_CLOSE', 5),
   } satisfies RiskConfig,
-  // Momentum-basket robot (forward test of r2_xsmom) on its own paper account.
+  // Momentum-basket robot (forward test of r2_xsmom), trading in the main paper account.
   xsmom: {
-    startingCash: num('XSMOM_STARTING_CASH', 25000),
     riskPerLeg: num('XSMOM_RISK_PER_LEG', 200),
     /** Close the whole basket once the day's net P&L reaches this many $ (0 = hold to the close). */
     dayTakeProfit: num('XSMOM_DAY_TAKE_PROFIT', 0),

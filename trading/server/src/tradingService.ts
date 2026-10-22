@@ -73,12 +73,13 @@ export class TradingService extends EventEmitter {
     return acct;
   }
 
-  async submitOrder(req: OrderRequest): Promise<Order> {
+  async submitOrder(req: OrderRequest, opts: { robot?: boolean } = {}): Promise<Order> {
     const symbol = String(req.symbol ?? '').toUpperCase();
     const positions = await this.broker.getPositions();
     const reason = this.risk.check(
       { ...req, symbol },
       { account: await this.account(), position: positions.find((p) => p.symbol === symbol), quote: this.feed.getQuote(symbol) },
+      opts.robot,
     );
     if (reason) {
       const now = Date.now();

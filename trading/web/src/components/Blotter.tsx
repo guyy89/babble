@@ -29,6 +29,7 @@ export function Blotter({ positions, orders, fills, onSelect, symbol, quote, bot
   const [tab, setTab] = useState<Tab>('xsbot');
   const open = orders.filter((o) => OPEN.has(o.status));
   const openPositions = positions.filter((p) => p.qty !== 0);
+  const robotSyms = new Set(xsbot?.today && !xsbot.today.done ? xsbot.today.legs.map((l) => l.symbol) : []);
 
   return (
     <div className="panel blotter">
@@ -36,7 +37,7 @@ export function Blotter({ positions, orders, fills, onSelect, symbol, quote, bot
         <button className={`${tab === 'xsbot' ? 'on' : ''} ${xsbot?.enabled ? 'bot-on' : ''}`} onClick={() => setTab('xsbot')}>
           רובוט מומנטום{xsbot?.today && !xsbot.today.done ? ` (${xsbot.today.legs.length} פוזיציות)` : ''}
         </button>
-        <button className={tab === 'positions' ? 'on' : ''} onClick={() => setTab('positions')}>פוזיציות ידניות ({openPositions.length})</button>
+        <button className={tab === 'positions' ? 'on' : ''} onClick={() => setTab('positions')}>פוזיציות ({openPositions.length})</button>
         <button className={tab === 'open' ? 'on' : ''} onClick={() => setTab('open')}>פקודות פתוחות ({open.length})</button>
         <button className={tab === 'orders' ? 'on' : ''} onClick={() => setTab('orders')}>כל הפקודות</button>
         <button className={tab === 'fills' ? 'on' : ''} onClick={() => setTab('fills')}>ביצועים</button>
@@ -56,7 +57,7 @@ export function Blotter({ positions, orders, fills, onSelect, symbol, quote, bot
             <tbody>
               {positions.map((p) => (
                 <tr key={p.symbol} onClick={() => onSelect(p.symbol)}>
-                  <td><b>{p.symbol}</b></td>
+                  <td><b>{p.symbol}</b>{robotSyms.has(p.symbol) && p.qty !== 0 && <span className="badge sm-badge"> רובוט</span>}</td>
                   <td className={p.qty < 0 ? 'down' : ''}>{p.qty}</td>
                   <td>{price(p.avgPrice)}</td>
                   <td>{price(p.marketPrice)}</td>

@@ -33,7 +33,7 @@ export const XS_PARAMS: XsParams = {
 };
 
 /** The rules that define one forward test; changing any of them starts a new test. */
-const testSignature = (p: XsParams) => JSON.stringify({ K: p.K, decMin: p.decMin, stopK: p.stopK, riskPerLeg: p.riskPerLeg, nLiquid: p.nLiquid, dayTakeProfit: p.dayTakeProfit });
+const testSignature = (p: XsParams) => JSON.stringify({ account: 'main', K: p.K, decMin: p.decMin, stopK: p.stopK, riskPerLeg: p.riskPerLeg, nLiquid: p.nLiquid, dayTakeProfit: p.dayTakeProfit });
 
 /** One stock's inputs at the decision minute. */
 export interface XsInput {
@@ -131,7 +131,8 @@ export interface XsStatus extends XsState {
   decisionTime: string;
   available: boolean;
   unavailableReason?: string;
-  summary: { days: number; pnl: number; r: number; peakR: number; drawdownR: number; openPnl: number; verdict: string };
+  /** todayPnl: the basket's own result today (the account is shared with manual trading). */
+  summary: { days: number; pnl: number; r: number; peakR: number; drawdownR: number; openPnl: number; todayPnl: number; verdict: string };
   account?: { equity: number; dayPnl: number };
   /** Today's basket, leg by leg: what is invested and the live or final P&L. */
   today?: { date: string; done: boolean; takeProfit: boolean; legs: XsLegView[] };
@@ -232,7 +233,7 @@ export class XsMomBot extends EventEmitter {
     return {
       ...this.s, phase: this.phase(), params: this.p, decisionTime: israelTime(OPEN_MINUTE + this.p.decMin, this.now()),
       available: !this.unavailable, unavailableReason: this.unavailable,
-      summary: { days: done.length, pnl: round2(pnl), r: round2(cum), peakR: round2(peak), drawdownR: round2(cum - peak), openPnl: round2(openPnl), verdict: this.verdict(done.length, cum) },
+      summary: { days: done.length, pnl: round2(pnl), r: round2(cum), peakR: round2(peak), drawdownR: round2(cum - peak), openPnl: round2(openPnl), todayPnl: round2(legs.reduce((a, l) => a + (l.pnl ?? 0), 0)), verdict: this.verdict(done.length, cum) },
       account: { equity: acct.equity, dayPnl: acct.dayPnl },
       today: latest ? { date: latest.date, done: latest.done, takeProfit: !!latest.takeProfitAt, legs } : undefined,
     };
@@ -348,7 +349,7 @@ export class XsMomBot extends EventEmitter {
         const order = await this.svc.submitOrder({
           symbol: b.symbol, side: b.side === 'long' ? 'buy' : 'sell', qty: b.qty, type: 'market', tif: 'day',
           clientOrderId: `xs-${date}-${b.symbol}`,
-        });
+        }, { robot: true });
         leg.orderId = order.id;
         if (order.status === 'rejected') leg.note = `נדחתה: ${order.rejectReason}`;
       } catch (err) {
@@ -369,9 +370,10 @@ export class XsMomBot extends EventEmitter {
     if (!day) return;
     const positions = (await this.svc.broker.getPositions()).filter((p) => p.qty !== 0 && day.legs.some((l) => l.symbol === p.symbol));
     if (!positions.length) return;
-    const acct = await this.svc.broker.getAccount(); // the robot's own account: its day P&L is the basket's
+    // The basket's own P&L (the account is shared with manual trading): open P&L plus what was realized today
+    // in these symbols (net of fees paid), minus the fees it would cost to close.
     const closing = positions.reduce((a, p) => a + this.closeFee(Math.abs(p.qty), p.marketPrice, p.qty > 0 ? 'sell' : 'buy'), 0);
-    const net = acct.dayPnl - closing;
+    const net = positions.reduce((a, p) => a + p.unrealizedPnl + p.realizedPnlToday, 0) - closing;
     if (net < tp) return;
     day.takeProfitAt = this.now();
     this.log(`הרווח של היום הגיע ל-$${net.toFixed(2)} נטו (היעד: $${tp}). סוגר את כל הפוזיציות`);

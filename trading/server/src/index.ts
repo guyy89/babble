@@ -98,19 +98,12 @@ const bot = new OrbBot(
 // In a sped-up replay the robot must act at the same market-time cadence as live (every 5 market seconds).
 bot.start(replaying ? Math.max(50, 5000 / Math.max(1, config.replay.speed)) : 5000);
 
-// ---------------------------------------------------------------- momentum-basket robot (own paper account)
-// Forward test of the research candidate r2_xsmom on a separate paper account, so its result is measured
-// cleanly and never mixes with manual practice. Same market data and fees; its own risk limits (no stop).
+// ---------------------------------------------------------------- momentum-basket robot
+// Forward test of the research candidate r2_xsmom, in the same paper account as manual trading (Guy: one
+// account, one screen). Its orders skip only the stop rule; it tracks its own P&L by its symbols.
 const xsParams = { ...XS_PARAMS, riskPerLeg: config.xsmom.riskPerLeg, dayTakeProfit: config.xsmom.dayTakeProfit };
 const xsCloseFee = (qty: number, price: number, side: 'buy' | 'sell') =>
   orderCommission(qty, qty * price, config.paper.fees) + regulatoryFees(side, qty, qty * price, config.paper.fees);
-const xsBroker = new PaperBroker(feed, clock, { ...config.paper, startingCash: config.xsmom.startingCash },
-  replaying ? undefined : new JsonFileStore<PaperState>(resolve(config.dataDir, `paper-xsmom-${config.dataSource}.json`)), now);
-const xsSvc = new TradingService(feed, xsBroker, clock, {
-  maxDailyLoss: 0, maxRiskPerTrade: 0, maxPositionNotional: 200 * xsParams.riskPerLeg, maxOrderNotional: 200 * xsParams.riskPerLeg,
-  flattenMinutesBeforeClose: config.risk.flattenMinutesBeforeClose,
-}, directory, undefined, false);
-await xsSvc.start();
 const sipHistory = alpaca ? new AlpacaHistory({ ...config.alpaca, feed: 'sip' }, resolve(config.dataDir, 'backtest-cache')) : undefined;
 
 /** Previous close, ATR14 and 20-day consolidated average volume for the ~400 biggest stocks by $ volume (IEX volume misranks some ETFs, so the pool is wide). */
@@ -148,7 +141,7 @@ async function xsPrices(symbols: string[]) {
 }
 
 const xsBot = new XsMomBot(
-  xsSvc, xsPrepare, xsPrices, xsParams,
+  svc, xsPrepare, xsPrices, xsParams,
   replaying ? undefined : new JsonFileStore<XsState>(resolve(config.dataDir, 'xsmom-bot.json')),
   simulated || replaying ? 'הרובוט עובד רק עם נתוני שוק חיים מאלפקה' : undefined, now, xsCloseFee,
 );
@@ -181,7 +174,6 @@ for (const sig of ['SIGINT', 'SIGTERM'] as const) {
   process.on(sig, () => {
     bot.stop();
     xsBot.stop();
-    xsSvc.stop();
     svc.stop();
     server.close();
     process.exit(0);

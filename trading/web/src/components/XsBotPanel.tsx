@@ -30,8 +30,7 @@ export function XsBotPanel({ status, onSelect }: { status?: XsStatus; onSelect: 
       </div>
 
       <div className="acct pad">
-        <Stat label="רווח/הפסד היום" value={signed(status.account?.dayPnl ?? 0)} cls={pnlClass(status.account?.dayPnl ?? 0)} />
-        <Stat label="הון בחשבון הרובוט" value={money(status.account?.equity ?? 0)} />
+        <Stat label="רובוט, יום אחרון" value={signed(s.todayPnl)} cls={pnlClass(s.todayPnl)} />
         <Stat label="מצטבר בבדיקה" value={`${signed(s.pnl)} (${s.r >= 0 ? '+' : ''}${s.r}R)`} cls={pnlClass(s.pnl)} />
         <Stat label="ימים בבדיקה" value={`${s.days} / ${p.evalDays}`} />
         <Stat label="ירידה מהשיא" value={`${s.drawdownR}R`} cls={pnlClass(s.drawdownR)} />
@@ -40,7 +39,7 @@ export function XsBotPanel({ status, onSelect }: { status?: XsStatus; onSelect: 
       <div className="muted small pad">
         כל יום מסחר ב-{status.decisionTime} שעון ישראל: קנייה של {p.K} המניות הנזילות החזקות מהפתיחה ושורט של {p.K} החלשות,
         סיכון ${p.riskPerLeg} למניה, בלי סטופ.{p.dayTakeProfit ? ` כשהרווח היומי נטו מגיע ל-$${p.dayTakeProfit} הכל נסגר;` : ''} אחרת
-        סגירה 5 דקות לפני סוף המסחר. חשבון תרגול נפרד. החלטה אחרי {p.evalDays} ימים: ‎+{p.confirmR}R ומעלה אושרה, 0 ומטה נכשלה, ירידה
+        סגירה 5 דקות לפני סוף המסחר. סוחר באותו חשבון, והפוזיציות שלו מסומנות "רובוט". החלטה אחרי {p.evalDays} ימים: ‎+{p.confirmR}R ומעלה אושרה, 0 ומטה נכשלה, ירידה
         של {p.maxDrawdownR}R עוצרת.
       </div>
 
