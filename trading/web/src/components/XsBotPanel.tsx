@@ -14,11 +14,8 @@ export function XsBotPanel({ status, onSelect }: { status?: XsStatus; onSelect: 
   const legs = status.today?.legs ?? [];
   const invested = legs.reduce((a, l) => a + (l.invested ?? 0), 0);
   const legsPnl = legs.reduce((a, l) => a + (l.pnl ?? 0), 0);
-  // Earlier tests (before a rule change) are shown too, marked, so the robot's whole record is in one table.
-  const history = [
-    ...(status.archive ?? []).flatMap((a) => a.days.filter((d) => d.done).map((d) => ({ ...d, archived: true }))),
-    ...status.days.filter((d) => d.done).map((d) => ({ ...d, archived: false })),
-  ].reverse();
+  // Only the current forward test (Guy: start fresh); earlier tests stay in the state file's archive.
+  const history = status.days.filter((d) => d.done).map((d) => ({ ...d, archived: false })).reverse();
 
   return (
     <div className="bot">
